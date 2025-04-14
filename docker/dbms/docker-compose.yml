@@ -1,0 +1,19 @@
+version: '3.3'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-container
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: qwer1234
+      MYSQL_DATABASE: ptpt
+      MYSQL_USER: ptpt
+      MYSQL_PASSWORD: qwer1234
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./data:/var/lib/mysql
+
+volumes:
+  mysql_data:

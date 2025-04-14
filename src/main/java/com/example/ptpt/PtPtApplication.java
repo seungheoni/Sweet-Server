@@ -1,11 +1,11 @@
-package com.example.fitmate;
+package com.example.ptpt;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class FitMateApplication {
+public class PtPtApplication {
     public static void main(String[] args) {
-        SpringApplication.run(FitMateApplication.class, args);
+        SpringApplication.run(PtPtApplication.class, args);
     }
 } 
