@@ -4,15 +4,16 @@ import com.example.ptpt.dto.request.FeedRequest;
 import com.example.ptpt.dto.response.FeedDetailResponse;
 import com.example.ptpt.dto.response.FeedImageUploadResponse;
 import com.example.ptpt.dto.response.FeedResponse;
+import com.example.ptpt.enums.FeedType;
 import com.example.ptpt.service.FeedService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -43,14 +44,12 @@ public class FeedController {
     )
     @GetMapping
     public ResponseEntity<Page<FeedResponse>> getFeeds(
-            @Parameter(description = "조회할 페이지 번호 (0부터 시작)")
             @RequestParam(defaultValue = "0") int page,
-
-            @Parameter(description = "한 페이지당 항목 수")
-            @RequestParam(defaultValue = "20") int size) {
-
-        Page<FeedResponse> feedResponses = feedService.getFeeds(PageRequest.of(page, size));
-        return ResponseEntity.ok(feedResponses);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) FeedType type) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<FeedResponse> feeds = feedService.getFeeds(pageable,type);
+        return ResponseEntity.ok(feeds);
     }
 
     @Operation(summary = "피드 상세 조회")
@@ -67,7 +66,7 @@ public class FeedController {
     @PostMapping
     public ResponseEntity<FeedResponse> createPost(@RequestBody FeedRequest feedRequest) {
         FeedResponse createdFeed = feedService.createFeed(feedRequest);
-        return ResponseEntity.status(201).body(createdFeed);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdFeed);
     }
 
     @Operation(summary = "피드 수정")
@@ -86,7 +85,7 @@ public class FeedController {
     @DeleteMapping("/{feedId}")
     public ResponseEntity<?> deletePost(@PathVariable Long feedId) {
         feedService.deleteFeed(feedId);
-        return ResponseEntity.ok("{\"message\": \"Post deleted successfully\"}");
+        return ResponseEntity.ok("{\"message\": \"feed deleted successfully\"}");
     }
 
     @Operation(summary = "피드 이미지 업로드", description = "여러 이미지를 업로드합니다.")

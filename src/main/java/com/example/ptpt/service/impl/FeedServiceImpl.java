@@ -1,14 +1,14 @@
 package com.example.ptpt.service.impl;
 
 import com.example.ptpt.dto.request.FeedRequest;
+import com.example.ptpt.dto.response.CommentResponse;
 import com.example.ptpt.dto.response.FeedDetailResponse;
 import com.example.ptpt.dto.response.FeedResponse;
-import com.example.ptpt.entity.ExerciseDetails;
 import com.example.ptpt.entity.Feed;
 import com.example.ptpt.entity.FeedImages;
 import com.example.ptpt.entity.Users;
+import com.example.ptpt.enums.FeedType;
 import com.example.ptpt.enums.FeedVisibility;
-import com.example.ptpt.repository.ExerciseDetailsRepository;
 import com.example.ptpt.repository.FeedImagesRepository;
 import com.example.ptpt.repository.FeedRepository;
 import com.example.ptpt.repository.UsersRepository;
@@ -20,12 +20,14 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import com.example.ptpt.dto.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -39,27 +41,30 @@ public class FeedServiceImpl implements FeedService {
     private final UsersRepository usersRepository;
     private final FeedImagesRepository feedImagesRepository;
 
-    @Value("${ptpt.upload.imagePath:classpath:img/feed}")
+    private static final int SUMMARY_MAX_LENGTH = 10;
+
+    @Value("${ptpt.upload.imagePath:classpath:/img/feed}")
     private String imageUploadPath;
 
+    @Value("${ptpt.upload.urlPrefix:/feeds/images/}")
+    private String imageUrlPrefix;
+
     @Override
-    public Page<FeedResponse> getFeeds(Pageable pageable) {
+    public Page<FeedResponse> getFeeds(Pageable pageable,FeedType type) {
         Page<Feed> feedPage = feedRepository.findAll(pageable);
         return feedPage.map(this::convertToDto);
     }
 
     @Override
     public FeedDetailResponse getFeedById(Long id) {
-        Optional<Feed> optionalFeed = feedRepository.findById(id);
-        if (optionalFeed.isPresent()) {
-            Feed feed = optionalFeed.get();
-            List<FeedImages> feedImages = feedImagesRepository.findByFeed(feed);
-            List<String> imageUrls = feedImages.stream()
-                    .map(FeedImages::getImageUrl)
-                    .collect(Collectors.toList());
-            return convertToDetailDto(feed, imageUrls);
-        }
-        throw new RuntimeException("Feed not found with id: " + id);
+        Feed feed = feedRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Feed not found with id: " + id));
+
+        List<FeedImages> feedImages = feedImagesRepository.findByFeed(feed);
+        List<String> imageUrls = feedImages.stream()
+                .map(fi -> imageUrlPrefix + fi.getImageUrl())
+                .collect(Collectors.toList());
+        return convertToDetailDto(feed, imageUrls);
     }
 
     @Override
@@ -78,16 +83,6 @@ public class FeedServiceImpl implements FeedService {
             feed.setVisibility(feedRequest.getVisibility());
         }
 
-        if (feedRequest.getExerciseDetails() != null) {
-            ExerciseDetailsRequest detailsReq = feedRequest.getExerciseDetails();
-            ExerciseDetails exerciseDetails = ExerciseDetails.builder()
-                    .duration(detailsReq.getDuration())
-                    .location(detailsReq.getLocation())
-                    .build();
-            feed.setExerciseDetails(exerciseDetails);
-            exerciseDetails.setFeed(feed);
-        }
-
         Feed savedFeed = feedRepository.save(feed);
         return convertToDto(savedFeed);
     }
@@ -99,6 +94,7 @@ public class FeedServiceImpl implements FeedService {
             Feed feed = optionalFeed.get();
             feed.setTitle(feedRequest.getTitle());
             feed.setContent(feedRequest.getContent());
+            feed.setVisibility(feedRequest.getVisibility());
 
             Feed updatedFeed = feedRepository.save(feed);
             return convertToDto(updatedFeed);
@@ -175,13 +171,16 @@ public class FeedServiceImpl implements FeedService {
             File destination = new File(uploadDir, originalFilename);
             try {
                 file.transferTo(destination);
-                String imageUrl = originalFilename;
+
+                String publicUrl = imageUrlPrefix + originalFilename;
+
                 FeedImages feedImage = FeedImages.builder()
                         .feed(feed)
-                        .imageUrl(imageUrl)
+                        .imageUrl(originalFilename)
                         .build();
                 feedImagesRepository.save(feedImage);
-                imageUrls.add(imageUrl);
+
+                imageUrls.add(publicUrl);
             } catch (IOException e) {
                 throw new RuntimeException("File upload failed for " + originalFilename, e);
             }
@@ -190,37 +189,73 @@ public class FeedServiceImpl implements FeedService {
     }
 
     private FeedDetailResponse convertToDetailDto(Feed feed, List<String> imageUrls) {
-        ExerciseDetailsRequest detailsDTO = ExerciseDetailsRequest.builder().exerciseType(List.of("swimming")).build();
+        // 모킹용 최상위 댓글 3개
+        List<CommentResponse> topComments = List.of(
+                CommentResponse.builder()
+                        .commentId(1L)
+                        .userId(201L)
+                        .userName("vurivuri")
+                        .text("소통해요~")
+                        .createdAt(Instant.now().minusSeconds(3600))
+                        .build(),
+                CommentResponse.builder()
+                        .commentId(2L)
+                        .userId(202L)
+                        .userName("fitness_zzang")
+                        .text("휴식시간 분배는 어떻게 하시나요")
+                        .createdAt(Instant.now().minusSeconds(1800))
+                        .build(),
+                CommentResponse.builder()
+                        .commentId(3L)
+                        .userId(203L)
+                        .userName("Idol_PP")
+                        .text("저희 모임 참여하지 않으실래요?")
+                        .createdAt(Instant.now().minusSeconds(600))
+                        .build()
+        );
+
         return FeedDetailResponse.builder()
                 .id(feed.getId())
                 .title(feed.getTitle())
-                .content(feed.getContent())
                 .authorId(feed.getUser() != null ? feed.getUser().getId() : null)
-                .visibility(feed.getVisibility())
-                .exerciseDetails(detailsDTO)
+                .authorName(feed.getUser().getUsername())
                 .imageUrls(imageUrls)
+                .authorProfileImageUrl("/feeds/images/health.png")
+                .feedContent(feed.getContent())
+                .visibility(feed.getVisibility())
+                .likeCount(108L)
+                .isLikedByCurrentUser(false)
+                .firstLikedUserName("손흥민")
+                .commentCount(8L)
+                .topComments(topComments)
+                .shareCount(3L)
+                .feedContent(feed.getContent())
+                .createdAt(feed.getCreatedAt())
+                .updatedAt(feed.getUpdatedAt())
                 .build();
     }
 
     private FeedResponse convertToDto(Feed feed) {
-        ExerciseDetails exerciseDetails = feed.getExerciseDetails();
-        ExerciseDetailsRequest detailsDTO = ExerciseDetailsRequest.builder()
-                .duration(exerciseDetails.getDuration())
-                .location(exerciseDetails.getLocation())
-                .build();
-
-        List<FeedImages> feedImages = feedImagesRepository.findByFeed(feed);
-        List<String> imageUrls = feedImages.stream()
-                .map(FeedImages::getImageUrl)
+        List<String> imageUrls = feedImagesRepository.findByFeed(feed).stream()
+                .map(fi -> imageUrlPrefix + fi.getImageUrl())
                 .collect(Collectors.toList());
 
         return FeedResponse.builder()
                 .id(feed.getId())
                 .title(feed.getTitle())
                 .authorId(feed.getUser() != null ? feed.getUser().getId() : null)
-                .visibility(feed.getVisibility())
-                .exerciseDetails(detailsDTO)
+                .authorName(feed.getUser().getUsername())
                 .imageUrls(imageUrls)
+                .authorProfileImageUrl("/feeds/images/health.png")
+                .visibility(feed.getVisibility())
+                .likeCount(120L)
+                .isLikedByCurrentUser(false)
+                .firstLikedUserName("손흥민")
+                .commentCount(30L)
+                .shareCount(3L)
+                .feedContent(feed.getContent())
+                .createdAt(feed.getCreatedAt())
+                .updatedAt(feed.getUpdatedAt())
                 .build();
     }
 }
