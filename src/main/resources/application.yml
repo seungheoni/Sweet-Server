@@ -33,6 +33,7 @@ server:
 
 # Swagger UI 설정
 springdoc:
+  server-url: "https://actually-fast-rhino.jp.ngrok.io"
   swagger-ui:
     path: /swagger-ui.html
   api-docs:
@@ -41,3 +42,4 @@ springdoc:
 ptpt:
   upload:
     imagePath: classpath:img/feed   # 임시 개발 이미지 저장 경로
+    urlPrefix: /feeds/images/
