@@ -9,26 +9,33 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 
     @Value("${ptpt.upload.urlPrefix}")
-    private String imageUrlPrefix;
-
+    private String feedUrlPrefix;
     @Value("${ptpt.upload.imagePath}")
-    private String imageUploadPath;
+    private String feedImagePath;
 
-    /**
-     * 개발용 피드 이미지 관련 불러오기 설정 (urlPrefix, imagePath 프로퍼티 사용)
-     */
+    @Value("${ptpt.upload.profileUrlPrefix}")
+    private String profileUrlPrefix;
+    @Value("${ptpt.upload.profileImagePath}")
+    private String profileImagePath;
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String prefix = imageUrlPrefix.endsWith("/")
-                ? imageUrlPrefix
-                : imageUrlPrefix + "/";
-        String mappingPattern = prefix + "**";
+        // feed 이미지 핸들러
+        registry.addResourceHandler(ensureSlash(feedUrlPrefix) + "**")
+                .addResourceLocations(ensureTrailingSlash(feedImagePath));
 
-        String location = imageUploadPath.endsWith("/")
-                ? imageUploadPath
-                : imageUploadPath + "/";
+        // profile 이미지 핸들러
+        registry.addResourceHandler(ensureSlash(profileUrlPrefix) + "**")
+                .addResourceLocations(ensureTrailingSlash(profileImagePath));
+    }
 
-        registry.addResourceHandler(mappingPattern)
-                .addResourceLocations(location);
+    // prefix가 "/" 로 끝나지 않으면 붙여주기
+    private String ensureSlash(String prefix) {
+        return prefix.endsWith("/") ? prefix : prefix + "/";
+    }
+
+    // location이 "/" 로 끝나지 않으면 붙여주기
+    private String ensureTrailingSlash(String location) {
+        return location.endsWith("/") ? location : location + "/";
     }
 }
