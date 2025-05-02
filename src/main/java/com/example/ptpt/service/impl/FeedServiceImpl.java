@@ -6,13 +6,16 @@ import com.example.ptpt.dto.response.FeedDetailResponse;
 import com.example.ptpt.dto.response.FeedResponse;
 import com.example.ptpt.entity.Feed;
 import com.example.ptpt.entity.FeedImages;
+import com.example.ptpt.entity.FeedLikes;
 import com.example.ptpt.entity.Users;
 import com.example.ptpt.enums.FeedType;
 import com.example.ptpt.enums.FeedVisibility;
 import com.example.ptpt.repository.FeedImagesRepository;
+import com.example.ptpt.repository.FeedLikeRepository;
 import com.example.ptpt.repository.FeedRepository;
 import com.example.ptpt.repository.UsersRepository;
 import com.example.ptpt.service.FeedService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,6 +43,7 @@ public class FeedServiceImpl implements FeedService {
     private final FeedRepository feedRepository;
     private final UsersRepository usersRepository;
     private final FeedImagesRepository feedImagesRepository;
+    private final FeedLikeRepository feedLikeRepository;
 
     private static final int SUMMARY_MAX_LENGTH = 10;
 
@@ -258,4 +262,30 @@ public class FeedServiceImpl implements FeedService {
                 .updatedAt(feed.getUpdatedAt())
                 .build();
     }
+
+
+
+    @Override
+    public void likeFeed(Long feedId, Long userId) {
+        Feed feed = feedRepository.findById(feedId)
+                .orElseThrow(() -> new EntityNotFoundException("Feed not found: " + feedId));
+        Users user = usersRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
+
+        // 중복 좋아요 방지
+        if (feedLikeRepository.existsByFeedAndUser(feed, user)) {
+            return;
+        }
+
+        FeedLikes like = new FeedLikes();
+        like.setFeed(feed);
+        like.setUser(user);
+        feedLikeRepository.save(like);
+    }
+
+    @Override
+    public void unlikeFeed(Long feedId, Long userId) {
+        feedLikeRepository.deleteByFeedIdAndUserId(feedId, userId);
+    }
+
 }

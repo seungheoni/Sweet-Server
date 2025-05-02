@@ -7,6 +7,7 @@ import com.example.ptpt.dto.response.FeedResponse;
 import com.example.ptpt.enums.FeedType;
 import com.example.ptpt.service.FeedService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @Tag(name = "피드", description = "피드 관련 API")
 @RestController
@@ -97,5 +99,49 @@ public class FeedController {
     public ResponseEntity<FeedImageUploadResponse> uploadImages(@PathVariable Long feedId, @RequestParam("files") List<MultipartFile> files) {
         List<String> urls = feedService.uploadImages(feedId, files);
         return new ResponseEntity<>(new FeedImageUploadResponse(urls), HttpStatus.OK);
+    }
+
+
+    @Operation(
+            summary = "피드 좋아요 등록",
+            description = "지정한 피드에 대해 사용자가 좋아요를 등록합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "좋아요 등록 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 (예: 이미 좋아요 등록됨)"),
+            @ApiResponse(responseCode = "404", description = "피드 또는 사용자 정보를 찾을 수 없음")
+    })
+    @PostMapping("/{feedId}/likes")
+    public ResponseEntity<Map<String, String>> likeFeed(
+            @Parameter(description = "좋아요를 남길 피드 ID", required = true)
+            @PathVariable Long feedId,
+            @Parameter(description = "좋아요를 누르는 사용자 ID", required = true)
+            @RequestParam Long userId
+    ) {
+        feedService.likeFeed(feedId, userId);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(Map.of("message", "피드 좋아요가 등록되었습니다."));
+    }
+
+    @Operation(
+            summary = "피드 좋아요 취소",
+            description = "지정한 피드에 대해 사용자의 좋아요를 취소합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "좋아요 취소 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "404", description = "좋아요 정보 또는 대상 피드를 찾을 수 없음")
+    })
+    @DeleteMapping("/{feedId}/likes")
+    public ResponseEntity<Map<String, String>> unlikeFeed(
+            @Parameter(description = "취소할 피드 ID", required = true)
+            @PathVariable Long feedId,
+            @Parameter(description = "좋아요를 취소하는 사용자 ID", required = true)
+            @RequestParam Long userId
+    ) {
+        feedService.unlikeFeed(feedId, userId);
+        return ResponseEntity
+                .ok(Map.of("message", "피드 좋아요가 취소되었습니다."));
     }
 }
