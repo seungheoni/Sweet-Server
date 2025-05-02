@@ -20,9 +20,11 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Tag(name = "피드", description = "피드 관련 API")
 @RestController
@@ -108,20 +110,24 @@ public class FeedController {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "좋아요 등록 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청 (예: 이미 좋아요 등록됨)"),
-            @ApiResponse(responseCode = "404", description = "피드 또는 사용자 정보를 찾을 수 없음")
+            @ApiResponse(responseCode = "400", description = "Like already exists"),
+            @ApiResponse(responseCode = "404", description = "Feed or User not found")
     })
     @PostMapping("/{feedId}/likes")
     public ResponseEntity<Map<String, String>> likeFeed(
-            @Parameter(description = "좋아요를 남길 피드 ID", required = true)
             @PathVariable Long feedId,
-            @Parameter(description = "좋아요를 누르는 사용자 ID", required = true)
             @RequestParam Long userId
     ) {
-        feedService.likeFeed(feedId, userId);
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(Map.of("message", "피드 좋아요가 등록되었습니다."));
+        try {
+            feedService.likeFeed(feedId, userId);
+            return ResponseEntity
+                    .status(HttpStatus.CREATED)
+                    .body(Map.of("message", "Like registered successfully"));
+        } catch (ResponseStatusException e) {
+            return ResponseEntity
+                    .status(e.getStatusCode())
+                    .body(Map.of("message", Objects.requireNonNull(e.getReason())));
+        }
     }
 
     @Operation(
@@ -130,18 +136,22 @@ public class FeedController {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "좋아요 취소 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-            @ApiResponse(responseCode = "404", description = "좋아요 정보 또는 대상 피드를 찾을 수 없음")
+            @ApiResponse(responseCode = "400", description = "Like does not exist"),
+            @ApiResponse(responseCode = "404", description = "Feed or User not found")
     })
     @DeleteMapping("/{feedId}/likes")
     public ResponseEntity<Map<String, String>> unlikeFeed(
-            @Parameter(description = "취소할 피드 ID", required = true)
             @PathVariable Long feedId,
-            @Parameter(description = "좋아요를 취소하는 사용자 ID", required = true)
             @RequestParam Long userId
     ) {
-        feedService.unlikeFeed(feedId, userId);
-        return ResponseEntity
-                .ok(Map.of("message", "피드 좋아요가 취소되었습니다."));
+        try {
+            feedService.unlikeFeed(feedId, userId);
+            return ResponseEntity
+                    .ok(Map.of("message", "Like cancelled successfully"));
+        } catch (ResponseStatusException e) {
+            return ResponseEntity
+                    .status(e.getStatusCode())
+                    .body(Map.of("message", Objects.requireNonNull(e.getReason())));
+        }
     }
 }

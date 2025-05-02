@@ -25,6 +25,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -193,6 +194,18 @@ public class FeedServiceImpl implements FeedService {
     }
 
     private FeedDetailResponse convertToDetailDto(Feed feed, List<String> imageUrls) {
+
+        long likeCount = feedLikeRepository.countByFeed(feed);
+        //인증 연동시 currentUserId 토큰에서 가져온 값으로 바꿀것
+        Long currentUserId = 1L;
+        boolean isLiked = usersRepository.findById(currentUserId)
+                .map(user -> feedLikeRepository.existsByFeedAndUser(feed, user))
+                .orElse(false);
+        String firstLikedUserName = feedLikeRepository
+                .findFirstByFeedOrderByCreatedAtAsc(feed)
+                .map(fl -> fl.getUser().getUsername())
+                .orElse("");
+
         // 모킹용 최상위 댓글 3개
         List<CommentResponse> topComments = List.of(
                 CommentResponse.builder()
@@ -227,9 +240,9 @@ public class FeedServiceImpl implements FeedService {
                 .authorProfileImageUrl("/feeds/images/health.png")
                 .feedContent(feed.getContent())
                 .visibility(feed.getVisibility())
-                .likeCount(108L)
-                .isLikedByCurrentUser(false)
-                .firstLikedUserName("손흥민")
+                .likeCount(likeCount)
+                .isLikedByCurrentUser(isLiked)
+                .firstLikedUserName(firstLikedUserName)
                 .commentCount(8L)
                 .topComments(topComments)
                 .shareCount(3L)
@@ -240,6 +253,17 @@ public class FeedServiceImpl implements FeedService {
     }
 
     private FeedResponse convertToDto(Feed feed) {
+        long likeCount = feedLikeRepository.countByFeed(feed);
+        //인증 연동시 currentUserId 토큰에서 가져온 값으로 바꿀것
+        Long currentUserId = 1L;
+        boolean isLiked = usersRepository.findById(currentUserId)
+                .map(user -> feedLikeRepository.existsByFeedAndUser(feed, user))
+                .orElse(false);
+        String firstLikedUserName = feedLikeRepository
+                .findFirstByFeedOrderByCreatedAtAsc(feed)
+                .map(fl -> fl.getUser().getUsername())
+                .orElse("");
+
         List<String> imageUrls = feedImagesRepository.findByFeed(feed).stream()
                 .map(fi -> imageUrlPrefix + fi.getImageUrl())
                 .collect(Collectors.toList());
@@ -252,9 +276,9 @@ public class FeedServiceImpl implements FeedService {
                 .imageUrls(imageUrls)
                 .authorProfileImageUrl("/feeds/images/health.png")
                 .visibility(feed.getVisibility())
-                .likeCount(120L)
-                .isLikedByCurrentUser(false)
-                .firstLikedUserName("손흥민")
+                .likeCount(likeCount)
+                .isLikedByCurrentUser(isLiked)
+                .firstLikedUserName(firstLikedUserName)
                 .commentCount(30L)
                 .shareCount(3L)
                 .feedContent(feed.getContent())
@@ -272,9 +296,8 @@ public class FeedServiceImpl implements FeedService {
         Users user = usersRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 
-        // 중복 좋아요 방지
         if (feedLikeRepository.existsByFeedAndUser(feed, user)) {
-            return;
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Like already exists");
         }
 
         FeedLikes like = new FeedLikes();
@@ -283,9 +306,19 @@ public class FeedServiceImpl implements FeedService {
         feedLikeRepository.save(like);
     }
 
+    // **unlikeFeed 메서드 수정**
     @Override
+    @Transactional
     public void unlikeFeed(Long feedId, Long userId) {
+        Feed feed = feedRepository.findById(feedId)
+                .orElseThrow(() -> new EntityNotFoundException("Feed not found: " + feedId));
+        Users user = usersRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
+
+        if (!feedLikeRepository.existsByFeedAndUser(feed, user)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Like does not exist");
+        }
+
         feedLikeRepository.deleteByFeedIdAndUserId(feedId, userId);
     }
-
 }
