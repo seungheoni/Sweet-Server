@@ -17,4 +17,10 @@ public interface FeedService {
     FeedResponse updateFeed(Long id, FeedRequest feedRequest);
     void deleteFeed(Long id);
     List<String> uploadImages(Long feedId, List<MultipartFile> files);
+
+    /** 특정 사용자가 피드에 좋아요를 누릅니다. */
+    void likeFeed(Long feedId, Long userId);
+
+    /** 특정 사용자가 피드 좋아요를 취소합니다. */
+    void unlikeFeed(Long feedId, Long userId);
 }
