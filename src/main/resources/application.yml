@@ -41,10 +41,5 @@ springdoc:
 
 ptpt:
   upload:
-    # feed 이미지 설정(기존)
-    urlPrefix:  /feeds/images/
-    imagePath:  classpath:img/feed
-
-    # profile 이미지 설정(추가)
-    profileUrlPrefix:  /profiles/images/
-    profileImagePath:  classpath:img/profile
+    imagePath: classpath:img/feed   # 임시 개발 이미지 저장 경로
+    urlPrefix: /feeds/images/
