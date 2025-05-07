@@ -1,4 +1,4 @@
-package com.example.fitmate.controller;
+package com.example.ptpt.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
