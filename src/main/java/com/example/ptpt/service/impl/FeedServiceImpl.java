@@ -6,9 +6,8 @@ import com.example.ptpt.dto.response.FeedResponse;
 import com.example.ptpt.entity.ExerciseDetails;
 import com.example.ptpt.entity.Feed;
 import com.example.ptpt.entity.FeedImages;
-import com.example.ptpt.entity.Users;
+import com.example.ptpt.entity.UserEntity;
 import com.example.ptpt.enums.FeedVisibility;
-import com.example.ptpt.repository.ExerciseDetailsRepository;
 import com.example.ptpt.repository.FeedImagesRepository;
 import com.example.ptpt.repository.FeedRepository;
 import com.example.ptpt.repository.UsersRepository;
@@ -68,7 +67,7 @@ public class FeedServiceImpl implements FeedService {
         feed.setTitle(feedRequest.getTitle());
         feed.setContent(feedRequest.getContent());
 
-        Users dummyUser = usersRepository.findById(1L)
+        UserEntity dummyUser = usersRepository.findById(1L)
                 .orElseThrow(() -> new RuntimeException("Dummy user not found. Please create a dummy user with id=1."));
         feed.setUser(dummyUser);
 

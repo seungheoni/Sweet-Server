@@ -29,7 +29,7 @@ public class SocialGroups {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
-    private Users createdBy;
+    private UserEntity createdBy;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

@@ -23,7 +23,7 @@ public class FeedLikes {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private Users user;
+    private UserEntity user;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
