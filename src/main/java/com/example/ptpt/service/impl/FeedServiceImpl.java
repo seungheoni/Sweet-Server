@@ -3,6 +3,7 @@ package com.example.ptpt.service.impl;
 import com.example.ptpt.dto.request.FeedRequest;
 import com.example.ptpt.dto.response.CommentResponse;
 import com.example.ptpt.dto.response.FeedDetailResponse;
+import com.example.ptpt.dto.response.FeedLikeResponse;
 import com.example.ptpt.dto.response.FeedResponse;
 import com.example.ptpt.entity.Feed;
 import com.example.ptpt.entity.FeedImages;
@@ -338,5 +339,21 @@ public class FeedServiceImpl implements FeedService {
         }
 
         feedLikeRepository.deleteByFeedIdAndUserId(feedId, userId);
+    }
+
+    @Override
+    public List<FeedLikeResponse> getFeedLikes(Long feedId) {
+        Feed feed = feedRepository.findById(feedId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Feed not found: " + feedId));
+
+        return feedLikeRepository.findByFeedOrderByCreatedAtDesc(feed)
+                .stream()
+                .map(fl -> new FeedLikeResponse(
+                        fl.getUser().getId(),
+                        fl.getUser().getUsername(),
+                        fl.getUser().getProfileImage(),   // Users 엔티티에 프로필 필드가 있다면
+                        fl.getCreatedAt()
+                ))
+                .toList();
     }
 }

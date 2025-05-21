@@ -3,6 +3,7 @@ package com.example.ptpt.controller;
 import com.example.ptpt.dto.request.FeedRequest;
 import com.example.ptpt.dto.response.FeedDetailResponse;
 import com.example.ptpt.dto.response.FeedImageUploadResponse;
+import com.example.ptpt.dto.response.FeedLikeResponse;
 import com.example.ptpt.dto.response.FeedResponse;
 import com.example.ptpt.enums.FeedType;
 import com.example.ptpt.service.FeedService;
@@ -153,5 +154,17 @@ public class FeedController {
                     .status(e.getStatusCode())
                     .body(Map.of("message", Objects.requireNonNull(e.getReason())));
         }
+    }
+
+    @Operation(summary = "피드 좋아요 목록 조회", description = "지정한 피드에 좋아요를 누른 유저 목록을 반환합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "404", description = "Feed not found")
+    })
+    @GetMapping("/{feedId}/likes")
+    public ResponseEntity<List<FeedLikeResponse>> getFeedLikes(
+            @PathVariable Long feedId) {
+        List<FeedLikeResponse> likes = feedService.getFeedLikes(feedId);
+        return ResponseEntity.ok(likes);
     }
 }

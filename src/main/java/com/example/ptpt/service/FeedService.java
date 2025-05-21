@@ -2,6 +2,7 @@ package com.example.ptpt.service;
 
 import com.example.ptpt.dto.request.FeedRequest;
 import com.example.ptpt.dto.response.FeedDetailResponse;
+import com.example.ptpt.dto.response.FeedLikeResponse;
 import com.example.ptpt.dto.response.FeedResponse;
 import com.example.ptpt.enums.FeedType;
 import org.springframework.data.domain.Page;
@@ -23,4 +24,7 @@ public interface FeedService {
 
     /** 특정 사용자가 피드 좋아요를 취소합니다. */
     void unlikeFeed(Long feedId, Long userId);
+
+    List<FeedLikeResponse> getFeedLikes(Long feedId);
+
 }
