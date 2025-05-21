@@ -10,10 +10,7 @@ import com.example.ptpt.entity.FeedLikes;
 import com.example.ptpt.entity.Users;
 import com.example.ptpt.enums.FeedType;
 import com.example.ptpt.enums.FeedVisibility;
-import com.example.ptpt.repository.FeedImagesRepository;
-import com.example.ptpt.repository.FeedLikeRepository;
-import com.example.ptpt.repository.FeedRepository;
-import com.example.ptpt.repository.UsersRepository;
+import com.example.ptpt.repository.*;
 import com.example.ptpt.service.FeedService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -45,7 +43,7 @@ public class FeedServiceImpl implements FeedService {
     private final UsersRepository usersRepository;
     private final FeedImagesRepository feedImagesRepository;
     private final FeedLikeRepository feedLikeRepository;
-
+    private final FollowsRepository followRepository;
     private static final int SUMMARY_MAX_LENGTH = 10;
 
     @Value("${ptpt.upload.imagePath:classpath:/img/feed}")
@@ -56,7 +54,27 @@ public class FeedServiceImpl implements FeedService {
 
     @Override
     public Page<FeedResponse> getFeeds(Pageable pageable,FeedType type) {
-        Page<Feed> feedPage = feedRepository.findAll(pageable);
+        // 유저Id 임시 조치.
+        Long currentUserId = 1L;
+
+        // 1) 팔로잉 ID 리스트 조회
+        List<Long> followingIds = followRepository.findFollowingIdsByFollowerId(currentUserId);
+
+        Page<Feed> feedPage;
+        if (type == FeedType.FOLLOWING) {
+            // 팔로우한 사람들의 피드
+            // empty 방어: followingIds 가 비어 있으면 빈 결과를 내려야 하므로 불가능한 ID(-1)로 쿼리
+            List<Long> ids = followingIds.isEmpty() ? Collections.singletonList(-1L) : followingIds;
+            feedPage = feedRepository.findByUserIdIn(ids, pageable);
+
+        } else {
+            // 팔로우하지 않은 사람들의 피드
+            // 유저 본인 피드도 제외하고 싶으면 followingIds 에 currentUserId 추가
+            List<Long> excludeIds = new ArrayList<>(followingIds);
+            excludeIds.add(currentUserId);
+            feedPage = feedRepository.findByUserIdNotIn(excludeIds, pageable);
+        }
+
         return feedPage.map(this::convertToDto);
     }
 
