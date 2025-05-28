@@ -5,6 +5,7 @@ import com.example.ptpt.entity.FeedLikes;
 import com.example.ptpt.entity.Users;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface FeedLikeRepository extends JpaRepository<FeedLikes, Long> {
@@ -18,4 +19,6 @@ public interface FeedLikeRepository extends JpaRepository<FeedLikes, Long> {
     // 최초 좋아요 한 사용자 조회 (등록일 기준 오름차순)
     Optional<FeedLikes> findFirstByFeedOrderByCreatedAtAsc(Feed feed);
 
+    // 기존 메서드 외에
+    List<FeedLikes> findByFeedOrderByCreatedAtDesc(Feed feed);
 }

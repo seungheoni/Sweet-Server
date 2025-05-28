@@ -33,7 +33,7 @@ server:
 
 # Swagger UI 설정
 springdoc:
-  server-url: "https://actually-fast-rhino.jp.ngrok.io"
+  server-url: https://ptpt.ngrok.app
   swagger-ui:
     path: /swagger-ui.html
   api-docs:

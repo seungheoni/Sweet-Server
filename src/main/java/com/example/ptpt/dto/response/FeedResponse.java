@@ -55,10 +55,13 @@ public class FeedResponse {
     @Schema(description = "첫번째 좋아요 누른 유저명", example = "김철수")
     private String firstLikedUserName;
 
+    @Schema(description = "첫번째 좋아요 누른 유저 프로필 이미지 URL", example = "/profiles/images/user123.png")
+    private String firstLikedUserProfileImageUrl;
+
     @Schema(description = "댓글 수", example = "8", defaultValue = "0")
     private Long commentCount;
 
-    @Schema(description = "게시글 공유 수",      example = "3", defaultValue = "0")
+    @Schema(description = "게시글 공유 수", example = "3", defaultValue = "0")
     private Long shareCount;
 
     @Schema(description = "작성 시간(UTC)", example = "2025-04-21T23:32:00")

@@ -2,15 +2,17 @@ package com.example.ptpt.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "feed_likes")
+@Table(name = "comments")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class FeedLikes {
+public class Comment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,7 +26,9 @@ public class FeedLikes {
     @JoinColumn(name = "user_id", nullable = false)
     private Users user;
 
-    // Instant 타입으로 변경
+    @Column(name = "text", nullable = false, columnDefinition = "TEXT")
+    private String text;
+
     @Column(name = "created_at", updatable = false, columnDefinition = "TIMESTAMP")
     private Instant createdAt;
 
