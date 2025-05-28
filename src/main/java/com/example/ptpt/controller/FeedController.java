@@ -1,10 +1,8 @@
 package com.example.ptpt.controller;
 
+import com.example.ptpt.dto.request.CommentRequest;
 import com.example.ptpt.dto.request.FeedRequest;
-import com.example.ptpt.dto.response.FeedDetailResponse;
-import com.example.ptpt.dto.response.FeedImageUploadResponse;
-import com.example.ptpt.dto.response.FeedLikeResponse;
-import com.example.ptpt.dto.response.FeedResponse;
+import com.example.ptpt.dto.response.*;
 import com.example.ptpt.enums.FeedType;
 import com.example.ptpt.service.FeedService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -166,5 +166,70 @@ public class FeedController {
             @PathVariable Long feedId) {
         List<FeedLikeResponse> likes = feedService.getFeedLikes(feedId);
         return ResponseEntity.ok(likes);
+    }
+
+
+    @Operation(summary = "댓글 작성")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "작성 성공"),
+            @ApiResponse(responseCode = "404", description = "Feed or User not found")
+    })
+    @PostMapping("/{feedId}/comments")
+    public ResponseEntity<CommentResponse> createComment(
+            @PathVariable Long feedId,
+            @RequestParam Long userId,
+            @RequestBody CommentRequest request) {
+
+        CommentResponse response = feedService.createComment(feedId, userId, request);
+        return ResponseEntity.status(201).body(response);
+    }
+
+    @Operation(summary = "댓글 수정")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "수정 성공"),
+            @ApiResponse(responseCode = "404", description = "Comment not found")
+    })
+    @PutMapping("/comments/{commentId}")
+    public ResponseEntity<CommentResponse> updateComment(
+            @PathVariable Long commentId,
+            @RequestBody CommentRequest request) {
+
+        CommentResponse response = feedService.updateComment(commentId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "댓글 삭제")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "삭제 성공"),
+            @ApiResponse(responseCode = "404", description = "Comment not found")
+    })
+    @DeleteMapping("/comments/{commentId}")
+    public ResponseEntity<Void> deleteComment(@PathVariable Long commentId) {
+        feedService.deleteComment(commentId);
+        return ResponseEntity.noContent().build();
+    }
+
+
+    @Operation(
+            summary = "피드 댓글 목록 조회",
+            description =
+                    "페이징 응답(Page) 객체의 필수 정보:\n" +
+                            "- **content**: 현재 페이지의 댓글 목록\n" +
+                            "- **number**: 현재 페이지 번호 (0부터 시작)\n" +
+                            "- **size**: 한 페이지당 댓글 수\n" +
+                            "- **totalElements**: 전체 댓글 개수\n" +
+                            "- **totalPages**: 전체 페이지 수\n" +
+                            "- **first**: 첫 페이지 여부\n" +
+                            "- **last**: 마지막 페이지 여부"
+    )
+    @GetMapping("/{feedId}/comments")
+    public ResponseEntity<Page<CommentResponse>> getComments(
+            @PathVariable Long feedId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").ascending());
+        Page<CommentResponse> comments = feedService.getComments(feedId, pageable);
+        return ResponseEntity.ok(comments);
     }
 }

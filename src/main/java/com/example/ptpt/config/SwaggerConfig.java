@@ -19,9 +19,9 @@ public class SwaggerConfig {
     @Bean
     public OpenAPI openAPI() {
         return new OpenAPI()
-//                .servers(Collections.singletonList(
-//                        new Server().url(serverUrl)
-//                ))
+                .servers(Collections.singletonList(
+                        new Server().url(serverUrl)
+                ))
                 .info(new Info()
                         .title("PTPT API")
                         .description("PTPT 서비스 API 명세서")

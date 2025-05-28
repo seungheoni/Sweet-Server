@@ -1,14 +1,12 @@
 package com.example.ptpt.service.impl;
 
+import com.example.ptpt.dto.request.CommentRequest;
 import com.example.ptpt.dto.request.FeedRequest;
 import com.example.ptpt.dto.response.CommentResponse;
 import com.example.ptpt.dto.response.FeedDetailResponse;
 import com.example.ptpt.dto.response.FeedLikeResponse;
 import com.example.ptpt.dto.response.FeedResponse;
-import com.example.ptpt.entity.Feed;
-import com.example.ptpt.entity.FeedImages;
-import com.example.ptpt.entity.FeedLikes;
-import com.example.ptpt.entity.Users;
+import com.example.ptpt.entity.*;
 import com.example.ptpt.enums.FeedType;
 import com.example.ptpt.enums.FeedVisibility;
 import com.example.ptpt.repository.*;
@@ -45,6 +43,7 @@ public class FeedServiceImpl implements FeedService {
     private final FeedImagesRepository feedImagesRepository;
     private final FeedLikeRepository feedLikeRepository;
     private final FollowsRepository followRepository;
+    private final CommentRepository commentRepository;
     private static final int SUMMARY_MAX_LENGTH = 10;
 
     @Value("${ptpt.upload.imagePath:classpath:/img/feed}")
@@ -53,24 +52,19 @@ public class FeedServiceImpl implements FeedService {
     @Value("${ptpt.upload.urlPrefix:/feeds/images/}")
     private String imageUrlPrefix;
 
-    @Override
-    public Page<FeedResponse> getFeeds(Pageable pageable,FeedType type) {
-        // 유저Id 임시 조치.
-        Long currentUserId = 1L;
+    @Value("${ptpt.upload.profileUrlPrefix:/profiles/images/}")
+    private String profileUrlPrefix;
 
-        // 1) 팔로잉 ID 리스트 조회
+    @Override
+    public Page<FeedResponse> getFeeds(Pageable pageable, FeedType type) {
+        Long currentUserId = 1L;
         List<Long> followingIds = followRepository.findFollowingIdsByFollowerId(currentUserId);
 
         Page<Feed> feedPage;
         if (type == FeedType.FOLLOWING) {
-            // 팔로우한 사람들의 피드
-            // empty 방어: followingIds 가 비어 있으면 빈 결과를 내려야 하므로 불가능한 ID(-1)로 쿼리
             List<Long> ids = followingIds.isEmpty() ? Collections.singletonList(-1L) : followingIds;
             feedPage = feedRepository.findByUserIdIn(ids, pageable);
-
         } else {
-            // 팔로우하지 않은 사람들의 피드
-            // 유저 본인 피드도 제외하고 싶으면 followingIds 에 currentUserId 추가
             List<Long> excludeIds = new ArrayList<>(followingIds);
             excludeIds.add(currentUserId);
             feedPage = feedRepository.findByUserIdNotIn(excludeIds, pageable);
@@ -101,11 +95,7 @@ public class FeedServiceImpl implements FeedService {
                 .orElseThrow(() -> new RuntimeException("Dummy user not found. Please create a dummy user with id=1."));
         feed.setUser(dummyUser);
 
-        if (feedRequest.getVisibility() == null) {
-            feed.setVisibility(FeedVisibility.공개);
-        } else {
-            feed.setVisibility(feedRequest.getVisibility());
-        }
+        feed.setVisibility(Optional.ofNullable(feedRequest.getVisibility()).orElse(FeedVisibility.공개));
 
         Feed savedFeed = feedRepository.save(feed);
         return convertToDto(savedFeed);
@@ -113,17 +103,14 @@ public class FeedServiceImpl implements FeedService {
 
     @Override
     public FeedResponse updateFeed(Long id, FeedRequest feedRequest) {
-        Optional<Feed> optionalFeed = feedRepository.findById(id);
-        if (optionalFeed.isPresent()) {
-            Feed feed = optionalFeed.get();
-            feed.setTitle(feedRequest.getTitle());
-            feed.setContent(feedRequest.getContent());
-            feed.setVisibility(feedRequest.getVisibility());
+        Feed feed = feedRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Feed not found"));
+        feed.setTitle(feedRequest.getTitle());
+        feed.setContent(feedRequest.getContent());
+        feed.setVisibility(feedRequest.getVisibility());
 
-            Feed updatedFeed = feedRepository.save(feed);
-            return convertToDto(updatedFeed);
-        }
-        return null;
+        Feed updatedFeed = feedRepository.save(feed);
+        return convertToDto(updatedFeed);
     }
 
     @Override
@@ -132,50 +119,39 @@ public class FeedServiceImpl implements FeedService {
                 .orElseThrow(() -> new RuntimeException("Feed not found"));
 
         feedImagesRepository.findByFeed(feed).forEach(this::deletePhysicalFile);
-
         feedRepository.delete(feed);
     }
 
     private File getUploadDir() {
-
         if (imageUploadPath.startsWith("classpath:")) {
             String path = imageUploadPath.substring("classpath:".length());
             Resource resource = new ClassPathResource(path);
             try {
                 File uploadDir = resource.getFile();
-                if (!uploadDir.exists()) {
-                    uploadDir.mkdirs();
-                }
+                if (!uploadDir.exists()) uploadDir.mkdirs();
                 return uploadDir;
             } catch (IOException e) {
-                throw new RuntimeException("클래스패스에서 이미지 업로드 디렉토리를 가져올 수 없습니다.", e);
+                throw new RuntimeException("Unable to get upload directory from classpath.", e);
             }
         } else {
             File uploadDir = new File(imageUploadPath);
-            if (!uploadDir.exists()) {
-                uploadDir.mkdirs();
-            }
+            if (!uploadDir.exists()) uploadDir.mkdirs();
             return uploadDir;
         }
     }
 
     private void deletePhysicalFile(FeedImages feedImages) {
-
         String fileName = feedImages.getImageUrl();
         if (fileName != null) {
             File uploadDir = getUploadDir();
             File fileToDelete = new File(uploadDir, fileName);
-            if (fileToDelete.exists()) {
-                if (fileToDelete.delete()) {
-                    log.info("Successfully deleted file: {}", fileToDelete.getAbsolutePath());
-                } else {
-                    log.error("Failed to delete file: {}", fileToDelete.getAbsolutePath());
-                }
+            if (fileToDelete.exists() && fileToDelete.delete()) {
+                log.info("Deleted file: {}", fileToDelete.getAbsolutePath());
             } else {
-                log.warn("File not found: {}", fileToDelete.getAbsolutePath());
+                log.warn("Failed to delete file: {}", fileToDelete.getAbsolutePath());
             }
         } else {
-            log.warn("삭제할 파일명이 없습니다.");
+            log.warn("No filename to delete.");
         }
     }
 
@@ -189,21 +165,15 @@ public class FeedServiceImpl implements FeedService {
 
         for (MultipartFile file : files) {
             String originalFilename = file.getOriginalFilename();
-            if (originalFilename == null || originalFilename.isEmpty()) {
-                continue;
-            }
+            if (originalFilename == null || originalFilename.isEmpty()) continue;
             File destination = new File(uploadDir, originalFilename);
             try {
                 file.transferTo(destination);
-
                 String publicUrl = imageUrlPrefix + originalFilename;
-
-                FeedImages feedImage = FeedImages.builder()
+                feedImagesRepository.save(FeedImages.builder()
                         .feed(feed)
                         .imageUrl(originalFilename)
-                        .build();
-                feedImagesRepository.save(feedImage);
-
+                        .build());
                 imageUrls.add(publicUrl);
             } catch (IOException e) {
                 throw new RuntimeException("File upload failed for " + originalFilename, e);
@@ -213,50 +183,36 @@ public class FeedServiceImpl implements FeedService {
     }
 
     private FeedDetailResponse convertToDetailDto(Feed feed, List<String> imageUrls) {
-
         long likeCount = feedLikeRepository.countByFeed(feed);
-        //인증 연동시 currentUserId 토큰에서 가져온 값으로 바꿀것
         Long currentUserId = 1L;
         boolean isLiked = usersRepository.findById(currentUserId)
                 .map(user -> feedLikeRepository.existsByFeedAndUser(feed, user))
                 .orElse(false);
-        String firstLikedUserName = feedLikeRepository
-                .findFirstByFeedOrderByCreatedAtAsc(feed)
-                .map(fl -> fl.getUser().getUsername())
-                .orElse("");
+        String firstLikedUserName = feedLikeRepository.findFirstByFeedOrderByCreatedAtAsc(feed)
+                .map(fl -> fl.getUser().getUsername()).orElse("");
 
-        // 모킹용 최상위 댓글 3개
         List<CommentResponse> topComments = List.of(
                 CommentResponse.builder()
-                        .commentId(1L)
-                        .userId(201L)
-                        .userName("vurivuri")
-                        .text("소통해요~")
-                        .createdAt(Instant.now().minusSeconds(3600))
-                        .build(),
+                        .commentId(1L).userId(201L).userName("vurivuri")
+                        .profileImageUrl(profileUrlPrefix + "profile_201.png")
+                        .text("소통해요~").createdAt(Instant.now().minusSeconds(3600)).build(),
                 CommentResponse.builder()
-                        .commentId(2L)
-                        .userId(202L)
-                        .userName("fitness_zzang")
-                        .text("휴식시간 분배는 어떻게 하시나요")
-                        .createdAt(Instant.now().minusSeconds(1800))
-                        .build(),
+                        .commentId(2L).userId(202L).userName("fitness_zzang")
+                        .profileImageUrl(profileUrlPrefix + "profile_202.png")
+                        .text("휴식시간 분배는 어떻게 하시나요").createdAt(Instant.now().minusSeconds(1800)).build(),
                 CommentResponse.builder()
-                        .commentId(3L)
-                        .userId(203L)
-                        .userName("Idol_PP")
-                        .text("저희 모임 참여하지 않으실래요?")
-                        .createdAt(Instant.now().minusSeconds(600))
-                        .build()
+                        .commentId(3L).userId(203L).userName("Idol_PP")
+                        .profileImageUrl(profileUrlPrefix + "profile_203.png")
+                        .text("저희 모임 참여하지 않으실래요?").createdAt(Instant.now().minusSeconds(600)).build()
         );
 
         return FeedDetailResponse.builder()
                 .id(feed.getId())
                 .title(feed.getTitle())
-                .authorId(feed.getUser() != null ? feed.getUser().getId() : null)
+                .authorId(feed.getUser().getId())
                 .authorName(feed.getUser().getUsername())
+                .authorProfileImageUrl(profileUrlPrefix + feed.getUser().getProfileImage())
                 .imageUrls(imageUrls)
-                .authorProfileImageUrl("/feeds/images/health.png")
                 .feedContent(feed.getContent())
                 .visibility(feed.getVisibility())
                 .likeCount(likeCount)
@@ -265,7 +221,6 @@ public class FeedServiceImpl implements FeedService {
                 .commentCount(8L)
                 .topComments(topComments)
                 .shareCount(3L)
-                .feedContent(feed.getContent())
                 .createdAt(feed.getCreatedAt())
                 .updatedAt(feed.getUpdatedAt())
                 .build();
@@ -273,15 +228,12 @@ public class FeedServiceImpl implements FeedService {
 
     private FeedResponse convertToDto(Feed feed) {
         long likeCount = feedLikeRepository.countByFeed(feed);
-        //인증 연동시 currentUserId 토큰에서 가져온 값으로 바꿀것
         Long currentUserId = 1L;
         boolean isLiked = usersRepository.findById(currentUserId)
                 .map(user -> feedLikeRepository.existsByFeedAndUser(feed, user))
                 .orElse(false);
-        String firstLikedUserName = feedLikeRepository
-                .findFirstByFeedOrderByCreatedAtAsc(feed)
-                .map(fl -> fl.getUser().getUsername())
-                .orElse("");
+        String firstLikedUserName = feedLikeRepository.findFirstByFeedOrderByCreatedAtAsc(feed)
+                .map(fl -> fl.getUser().getUsername()).orElse("");
 
         List<String> imageUrls = feedImagesRepository.findByFeed(feed).stream()
                 .map(fi -> imageUrlPrefix + fi.getImageUrl())
@@ -290,10 +242,10 @@ public class FeedServiceImpl implements FeedService {
         return FeedResponse.builder()
                 .id(feed.getId())
                 .title(feed.getTitle())
-                .authorId(feed.getUser() != null ? feed.getUser().getId() : null)
+                .authorId(feed.getUser().getId())
                 .authorName(feed.getUser().getUsername())
+                .authorProfileImageUrl(profileUrlPrefix + feed.getUser().getProfileImage())
                 .imageUrls(imageUrls)
-                .authorProfileImageUrl("/feeds/images/health.png")
                 .visibility(feed.getVisibility())
                 .likeCount(likeCount)
                 .isLikedByCurrentUser(isLiked)
@@ -305,8 +257,6 @@ public class FeedServiceImpl implements FeedService {
                 .updatedAt(feed.getUpdatedAt())
                 .build();
     }
-
-
 
     @Override
     public void likeFeed(Long feedId, Long userId) {
@@ -325,7 +275,6 @@ public class FeedServiceImpl implements FeedService {
         feedLikeRepository.save(like);
     }
 
-    // **unlikeFeed 메서드 수정**
     @Override
     @Transactional
     public void unlikeFeed(Long feedId, Long userId) {
@@ -351,9 +300,76 @@ public class FeedServiceImpl implements FeedService {
                 .map(fl -> new FeedLikeResponse(
                         fl.getUser().getId(),
                         fl.getUser().getUsername(),
-                        fl.getUser().getProfileImage(),   // Users 엔티티에 프로필 필드가 있다면
+                        profileUrlPrefix + fl.getUser().getProfileImage(),
                         fl.getCreatedAt()
                 ))
                 .toList();
+    }
+
+    @Override
+    public Page<CommentResponse> getComments(Long feedId, Pageable pageable) {
+        Feed feed = feedRepository.findById(feedId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Feed not found: " + feedId));
+
+        return commentRepository.findByFeedOrderByCreatedAtAsc(feed, pageable)
+                .map(c -> CommentResponse.builder()
+                        .commentId(c.getId())
+                        .userId(c.getUser().getId())
+                        .userName(c.getUser().getUsername())
+                        .profileImageUrl(profileUrlPrefix + c.getUser().getProfileImage())
+                        .text(c.getText())
+                        .createdAt(c.getCreatedAt())
+                        .build()
+                );
+    }
+
+    @Override
+    public CommentResponse createComment(Long feedId, Long userId, CommentRequest request) {
+        Feed feed = feedRepository.findById(feedId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Feed not found: " + feedId));
+        Users user = usersRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userId));
+
+        Comment comment = Comment.builder()
+                .feed(feed)
+                .user(user)
+                .text(request.getText())
+                .build();
+        Comment saved = commentRepository.save(comment);
+
+        return CommentResponse.builder()
+                .commentId(saved.getId())
+                .userId(user.getId())
+                .userName(user.getUsername())
+                .profileImageUrl(profileUrlPrefix + user.getProfileImage())
+                .text(saved.getText())
+                .createdAt(saved.getCreatedAt())
+                .build();
+    }
+
+    @Override
+    public CommentResponse updateComment(Long commentId, CommentRequest request) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found: " + commentId));
+        comment.setText(request.getText());
+        Comment updated = commentRepository.save(comment);
+
+        return CommentResponse.builder()
+                .commentId(updated.getId())
+                .userId(updated.getUser().getId())
+                .userName(updated.getUser().getUsername())
+                .profileImageUrl(profileUrlPrefix + updated.getUser().getProfileImage())
+                .text(updated.getText())
+                .createdAt(updated.getCreatedAt())
+                .build();
+    }
+
+    @Override
+    public void deleteComment(Long commentId) {
+        if (!commentRepository.existsById(commentId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found: " + commentId);
+        }
+        commentRepository.deleteById(commentId);
     }
 }

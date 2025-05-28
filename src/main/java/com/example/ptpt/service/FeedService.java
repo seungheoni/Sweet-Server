@@ -1,6 +1,8 @@
 package com.example.ptpt.service;
 
+import com.example.ptpt.dto.request.CommentRequest;
 import com.example.ptpt.dto.request.FeedRequest;
+import com.example.ptpt.dto.response.CommentResponse;
 import com.example.ptpt.dto.response.FeedDetailResponse;
 import com.example.ptpt.dto.response.FeedLikeResponse;
 import com.example.ptpt.dto.response.FeedResponse;
@@ -27,4 +29,9 @@ public interface FeedService {
 
     List<FeedLikeResponse> getFeedLikes(Long feedId);
 
+    Page<CommentResponse> getComments(Long feedId, Pageable pageable);
+
+    CommentResponse createComment(Long feedId, Long userId, CommentRequest request);
+    CommentResponse updateComment(Long commentId, CommentRequest request);
+    void deleteComment(Long commentId);
 }
