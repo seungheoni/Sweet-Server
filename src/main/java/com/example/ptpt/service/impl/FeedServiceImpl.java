@@ -183,29 +183,37 @@ public class FeedServiceImpl implements FeedService {
     }
 
     private FeedDetailResponse convertToDetailDto(Feed feed, List<String> imageUrls) {
+        // 좋아요 수 집계
         long likeCount = feedLikeRepository.countByFeed(feed);
+        // 현재 사용자 ID (예시로 하드코딩)
         Long currentUserId = 1L;
+        // 현재 사용자의 좋아요 여부
         boolean isLiked = usersRepository.findById(currentUserId)
                 .map(user -> feedLikeRepository.existsByFeedAndUser(feed, user))
                 .orElse(false);
-        String firstLikedUserName = feedLikeRepository.findFirstByFeedOrderByCreatedAtAsc(feed)
-                .map(fl -> fl.getUser().getUsername()).orElse("");
 
-        List<CommentResponse> topComments = List.of(
-                CommentResponse.builder()
-                        .commentId(1L).userId(201L).userName("vurivuri")
-                        .profileImageUrl(profileUrlPrefix + "profile_201.png")
-                        .text("소통해요~").createdAt(Instant.now().minusSeconds(3600)).build(),
-                CommentResponse.builder()
-                        .commentId(2L).userId(202L).userName("fitness_zzang")
-                        .profileImageUrl(profileUrlPrefix + "profile_202.png")
-                        .text("휴식시간 분배는 어떻게 하시나요").createdAt(Instant.now().minusSeconds(1800)).build(),
-                CommentResponse.builder()
-                        .commentId(3L).userId(203L).userName("Idol_PP")
-                        .profileImageUrl(profileUrlPrefix + "profile_203.png")
-                        .text("저희 모임 참여하지 않으실래요?").createdAt(Instant.now().minusSeconds(600)).build()
-        );
+        // 첫 번째 좋아요 사용자 이름 및 프로필 이미지 URL 조회
+        Optional<FeedLikes> firstLikeOpt = feedLikeRepository.findFirstByFeedOrderByCreatedAtAsc(feed);
+        String firstLikedUserName = firstLikeOpt.map(fl -> fl.getUser().getUsername()).orElse("");
+        String firstLikedUserProfileImageUrl = firstLikeOpt
+                .map(fl -> profileUrlPrefix + fl.getUser().getProfileImage())
+                .orElse("");
 
+        // 상위 3개 댓글 조회 및 DTO 변환
+        List<CommentResponse> topComments = commentRepository
+                .findByFeedOrderByCreatedAtAsc(feed, Pageable.ofSize(3))
+                .stream()
+                .map(c -> CommentResponse.builder()
+                        .commentId(c.getId())
+                        .userId(c.getUser().getId())
+                        .userName(c.getUser().getUsername())
+                        .profileImageUrl(profileUrlPrefix + c.getUser().getProfileImage())
+                        .text(c.getText())
+                        .createdAt(c.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+
+        // 최종 DTO 빌드
         return FeedDetailResponse.builder()
                 .id(feed.getId())
                 .title(feed.getTitle())
@@ -218,7 +226,8 @@ public class FeedServiceImpl implements FeedService {
                 .likeCount(likeCount)
                 .isLikedByCurrentUser(isLiked)
                 .firstLikedUserName(firstLikedUserName)
-                .commentCount(8L)
+                .firstLikedUserProfileImageUrl(firstLikedUserProfileImageUrl)
+                .commentCount(commentRepository.countByFeedId(feed.getId()))
                 .topComments(topComments)
                 .shareCount(3L)
                 .createdAt(feed.getCreatedAt())
@@ -232,8 +241,13 @@ public class FeedServiceImpl implements FeedService {
         boolean isLiked = usersRepository.findById(currentUserId)
                 .map(user -> feedLikeRepository.existsByFeedAndUser(feed, user))
                 .orElse(false);
-        String firstLikedUserName = feedLikeRepository.findFirstByFeedOrderByCreatedAtAsc(feed)
-                .map(fl -> fl.getUser().getUsername()).orElse("");
+
+        // 첫 번째 좋아요 사용자의 이름과 이미지 URL 조회
+        Optional<FeedLikes> firstLikeOpt = feedLikeRepository.findFirstByFeedOrderByCreatedAtAsc(feed);
+        String firstLikedUserName = firstLikeOpt.map(fl -> fl.getUser().getUsername()).orElse("");
+        String firstLikedUserProfileImageUrl = firstLikeOpt
+                .map(fl -> profileUrlPrefix + fl.getUser().getProfileImage())
+                .orElse("");
 
         List<String> imageUrls = feedImagesRepository.findByFeed(feed).stream()
                 .map(fi -> imageUrlPrefix + fi.getImageUrl())
@@ -250,6 +264,7 @@ public class FeedServiceImpl implements FeedService {
                 .likeCount(likeCount)
                 .isLikedByCurrentUser(isLiked)
                 .firstLikedUserName(firstLikedUserName)
+                .firstLikedUserProfileImageUrl(firstLikedUserProfileImageUrl)  // 여기에 추가
                 .commentCount(30L)
                 .shareCount(3L)
                 .feedContent(feed.getContent())

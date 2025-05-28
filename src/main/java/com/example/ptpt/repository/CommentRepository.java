@@ -11,4 +11,5 @@ import java.util.List;
 public interface CommentRepository extends JpaRepository<Comment, Long> {
     // 해당 피드의 댓글을 생성일 기준 오름차순으로 가져오기
     Page<Comment> findByFeedOrderByCreatedAtAsc(Feed feed, Pageable pageable);
+    long countByFeedId(Long feedId);
 }

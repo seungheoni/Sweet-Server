@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.List;
-
 @Getter
 @Builder
 @NoArgsConstructor
@@ -53,6 +52,9 @@ public class FeedDetailResponse {
 
     @Schema(description = "첫번째 좋아요 누른 유저명", example = "김철수")
     private String firstLikedUserName;
+
+    @Schema(description = "첫번째 좋아요 누른 유저 프로필 이미지 URL", example = "/profiles/images/user123.png")
+    private String firstLikedUserProfileImageUrl;
 
     @Schema(description = "댓글 수", example = "8", defaultValue = "0")
     private Long commentCount;
