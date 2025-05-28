@@ -265,7 +265,7 @@ public class FeedServiceImpl implements FeedService {
                 .isLikedByCurrentUser(isLiked)
                 .firstLikedUserName(firstLikedUserName)
                 .firstLikedUserProfileImageUrl(firstLikedUserProfileImageUrl)  // 여기에 추가
-                .commentCount(30L)
+                .commentCount(commentRepository.countByFeedId(feed.getId()))
                 .shareCount(3L)
                 .feedContent(feed.getContent())
                 .createdAt(feed.getCreatedAt())
