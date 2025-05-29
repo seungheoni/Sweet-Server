@@ -1,39 +1,39 @@
 package com.example.ptpt.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "follows")
+@Table(name = "comments")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Follows {
+public class Comment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "follower_id", nullable = false)
-    private UserEntity follower;
+    @JoinColumn(name = "feed_id", nullable = false)
+    private Feed feed;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "following_id", nullable = false)
-    private UserEntity following;
+    @JoinColumn(name = "user_id", nullable = false)
+    private Users user;
+
+    @Column(name = "text", nullable = false, columnDefinition = "TEXT")
+    private String text;
 
     @Column(name = "created_at", updatable = false, columnDefinition = "TIMESTAMP")
     private Instant createdAt;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = Instant.now();
+        this.createdAt = Instant.now();
     }
 }

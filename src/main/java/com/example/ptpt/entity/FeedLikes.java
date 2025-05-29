@@ -1,9 +1,8 @@
 package com.example.ptpt.entity;
 
-
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "feed_likes")
@@ -25,11 +24,12 @@ public class FeedLikes {
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    // Instant 타입으로 변경
+    @Column(name = "created_at", updatable = false, columnDefinition = "TIMESTAMP")
+    private Instant createdAt;
 
     @PrePersist
-    protected void onCreate(){
-        createdAt = LocalDateTime.now();
+    protected void onCreate() {
+        this.createdAt = Instant.now();
     }
 }
