@@ -26,7 +26,4 @@ public class FeedRequest {
 
     @Schema(description = "피드 공개 범위", example = "공개", defaultValue = "공개")
     private FeedVisibility visibility;
-
-    @Schema(description = "운동 상세 정보")
-    private ExerciseDetailsRequest exerciseDetails;
 }
