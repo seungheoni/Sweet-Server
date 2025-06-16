@@ -59,7 +59,7 @@ public class FollowServiceImpl implements FollowService {
 
                     return UserResponse.builder()
                             .id(u.getId())
-                            .username(u.getUsername())
+                            .nickname(u.getNickname())         // ← getUsername() → getNickname()
                             .profileImageUrl(fullUrl)
                             .build();
                 });
@@ -71,6 +71,7 @@ public class FollowServiceImpl implements FollowService {
         return followRepo.findByFollowerId(userId, pageable)
                 .map(f -> {
                     Users u = f.getFollowing();
+                    // prefix가 슬래시로 끝나지 않으면 붙여 주고, 실제 파일명 앞에 붙이기
                     String prefix = profileUrlPrefix.endsWith("/")
                             ? profileUrlPrefix
                             : profileUrlPrefix + "/";
@@ -78,7 +79,7 @@ public class FollowServiceImpl implements FollowService {
 
                     return UserResponse.builder()
                             .id(u.getId())
-                            .username(u.getUsername())
+                            .nickname(u.getNickname())      // ← getUsername() → getNickname()
                             .profileImageUrl(fullUrl)
                             .build();
                 });
