@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum FeedVisibility {
     PRIVATE("비공개"),
+    CIRCLE("일촌"),
     PUBLIC("공개");
 
     private final String krValue;
