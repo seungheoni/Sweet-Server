@@ -33,6 +33,19 @@ public class Users {
     @Column(length = 20)
     private String phoneNumber;   // 전화번호
 
+    // --- 개인 정보 추가 ---
+    @Column(name = "age_group", length = 20)
+    private String ageGroup;      // 연령대 (10대, 20대, ...)
+
+    @Column(length = 1)
+    private String gender;        // 성별 (M, F)
+
+    @Column(length = 50)
+    private String region;        // 지역 (서울, 경기 등)
+
+    @Column(name = "preferred_group_size")
+    private Integer preferredGroupSize; // 선호 운동 그룹 인원
+
     // --- 인증 정보 ---
     @Column(nullable = true, length = 255)
     private String password;      // 소셜 가입 시 NULL 허용
