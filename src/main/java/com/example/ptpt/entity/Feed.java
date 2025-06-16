@@ -33,6 +33,22 @@ public class Feed {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    /** 운동 이미지 URL */
+    @Column(length = 500)
+    private String image;
+
+    /** 운동 종류 (러닝, 요가, ...) */
+    @Column(name = "exercise_type", length = 50)
+    private String exerciseType;
+
+    /** 운동 시간대 (아침, 저녁 등) */
+    @Column(name = "exercise_time", length = 50)
+    private String exerciseTime;
+
+    /** 운동 시간 (분) */
+    @Column(name = "workout_duration")
+    private Integer workoutDuration;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private FeedVisibility visibility;
@@ -46,6 +62,7 @@ public class Feed {
     @OneToOne(mappedBy = "feed", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private ExerciseDetails exerciseDetails;
 
+    @Builder.Default
     @OneToMany(mappedBy = "feed", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<FeedImages> feedImages = new ArrayList<>();
 

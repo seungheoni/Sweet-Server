@@ -1,7 +1,19 @@
 package com.example.ptpt.enums;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+
 public enum FeedVisibility {
-    비공개,
-    일촌,
-    공개
+    PRIVATE("비공개"),
+    PUBLIC("공개");
+
+    private final String krValue;
+
+    FeedVisibility(String krValue) {
+        this.krValue = krValue;
+    }
+
+    @JsonValue
+    public String getKrValue() {
+        return krValue;
+    }
 }

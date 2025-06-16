@@ -44,7 +44,6 @@ public class FeedServiceImpl implements FeedService {
     private final FeedLikeRepository feedLikeRepository;
     private final FollowsRepository followRepository;
     private final CommentRepository commentRepository;
-    private static final int SUMMARY_MAX_LENGTH = 10;
 
     @Value("${ptpt.upload.imagePath:classpath:/img/feed}")
     private String imageUploadPath;
@@ -90,15 +89,18 @@ public class FeedServiceImpl implements FeedService {
         Feed feed = new Feed();
         feed.setTitle(feedRequest.getTitle());
         feed.setContent(feedRequest.getContent());
+        feed.setImage(feedRequest.getImage());
+        feed.setExerciseType(feedRequest.getExerciseType());
+        feed.setExerciseTime(feedRequest.getExerciseTime());
+        feed.setWorkoutDuration(feedRequest.getWorkoutDuration());
 
-        Users dummyUser = usersRepository.findById(1L)
-                .orElseThrow(() -> new RuntimeException("Dummy user not found. Please create a dummy user with id=1."));
-        feed.setUser(dummyUser);
+        Users user = usersRepository.findById(feedRequest.getAuthorId())
+                .orElseThrow(() -> new RuntimeException("User not found. "));
+        feed.setUser(user);
 
-        feed.setVisibility(Optional.ofNullable(feedRequest.getVisibility()).orElse(FeedVisibility.공개));
-
-        Feed savedFeed = feedRepository.save(feed);
-        return convertToDto(savedFeed);
+        feed.setVisibility(Optional.ofNullable(feedRequest.getVisibility()).orElse(FeedVisibility.PUBLIC));
+        Feed saved = feedRepository.save(feed);
+        return convertToDto(saved);
     }
 
     @Override
@@ -107,10 +109,14 @@ public class FeedServiceImpl implements FeedService {
                 .orElseThrow(() -> new RuntimeException("Feed not found"));
         feed.setTitle(feedRequest.getTitle());
         feed.setContent(feedRequest.getContent());
+        feed.setImage(feedRequest.getImage());
+        feed.setExerciseType(feedRequest.getExerciseType());
+        feed.setExerciseTime(feedRequest.getExerciseTime());
+        feed.setWorkoutDuration(feedRequest.getWorkoutDuration());
         feed.setVisibility(feedRequest.getVisibility());
 
-        Feed updatedFeed = feedRepository.save(feed);
-        return convertToDto(updatedFeed);
+        Feed updated = feedRepository.save(feed);
+        return convertToDto(updated);
     }
 
     @Override
@@ -131,7 +137,7 @@ public class FeedServiceImpl implements FeedService {
                 if (!uploadDir.exists()) uploadDir.mkdirs();
                 return uploadDir;
             } catch (IOException e) {
-                throw new RuntimeException("Unable to get upload directory from classpath.", e);
+                throw new RuntimeException("Unable to get upload directory.", e);
             }
         } else {
             File uploadDir = new File(imageUploadPath);
@@ -150,8 +156,6 @@ public class FeedServiceImpl implements FeedService {
             } else {
                 log.warn("Failed to delete file: {}", fileToDelete.getAbsolutePath());
             }
-        } else {
-            log.warn("No filename to delete.");
         }
     }
 
@@ -183,57 +187,56 @@ public class FeedServiceImpl implements FeedService {
     }
 
     private FeedDetailResponse convertToDetailDto(Feed feed, List<String> imageUrls) {
-        // 좋아요 수 집계
         long likeCount = feedLikeRepository.countByFeed(feed);
-        // 현재 사용자 ID (예시로 하드코딩)
         Long currentUserId = 1L;
-        // 현재 사용자의 좋아요 여부
         boolean isLiked = usersRepository.findById(currentUserId)
                 .map(user -> feedLikeRepository.existsByFeedAndUser(feed, user))
                 .orElse(false);
 
-        // 첫 번째 좋아요 사용자 이름 및 프로필 이미지 URL 조회
-        Optional<FeedLikes> firstLikeOpt = feedLikeRepository.findFirstByFeedOrderByCreatedAtAsc(feed);
-        String firstLikedUserName = firstLikeOpt.map(fl -> fl.getUser().getUsername()).orElse("");
-        String firstLikedUserProfileImageUrl = firstLikeOpt
+        Optional<FeedLikes> first = feedLikeRepository.findFirstByFeedOrderByCreatedAtAsc(feed);
+        String firstUser = first.map(fl -> fl.getUser().getNickname()).orElse("");
+        String firstProfile = first
                 .map(fl -> profileUrlPrefix + fl.getUser().getProfileImage())
                 .orElse("");
 
-        // 상위 3개 댓글 조회 및 DTO 변환
-        List<CommentResponse> topComments = commentRepository
+        List<CommentResponse> comments = commentRepository
                 .findByFeedOrderByCreatedAtAsc(feed, Pageable.ofSize(3))
                 .stream()
                 .map(c -> CommentResponse.builder()
                         .commentId(c.getId())
                         .userId(c.getUser().getId())
-                        .userName(c.getUser().getUsername())
+                        .userName(c.getUser().getNickname())
                         .profileImageUrl(profileUrlPrefix + c.getUser().getProfileImage())
                         .text(c.getText())
                         .createdAt(c.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
 
-        // 최종 DTO 빌드
         return FeedDetailResponse.builder()
                 .id(feed.getId())
                 .title(feed.getTitle())
                 .authorId(feed.getUser().getId())
-                .authorName(feed.getUser().getUsername())
+                .authorName(feed.getUser().getNickname())
                 .authorProfileImageUrl(profileUrlPrefix + feed.getUser().getProfileImage())
                 .imageUrls(imageUrls)
+                .image(feed.getImage())
+                .exerciseType(feed.getExerciseType())
+                .exerciseTime(feed.getExerciseTime())
+                .workoutDuration(feed.getWorkoutDuration())
                 .feedContent(feed.getContent())
                 .visibility(feed.getVisibility())
                 .likeCount(likeCount)
                 .isLikedByCurrentUser(isLiked)
-                .firstLikedUserName(firstLikedUserName)
-                .firstLikedUserProfileImageUrl(firstLikedUserProfileImageUrl)
+                .firstLikedUserName(firstUser)
+                .firstLikedUserProfileImageUrl(firstProfile)
                 .commentCount(commentRepository.countByFeedId(feed.getId()))
-                .topComments(topComments)
+                .topComments(comments)
                 .shareCount(3L)
                 .createdAt(feed.getCreatedAt())
                 .updatedAt(feed.getUpdatedAt())
                 .build();
     }
+
 
     private FeedResponse convertToDto(Feed feed) {
         long likeCount = feedLikeRepository.countByFeed(feed);
@@ -242,14 +245,14 @@ public class FeedServiceImpl implements FeedService {
                 .map(user -> feedLikeRepository.existsByFeedAndUser(feed, user))
                 .orElse(false);
 
-        // 첫 번째 좋아요 사용자의 이름과 이미지 URL 조회
-        Optional<FeedLikes> firstLikeOpt = feedLikeRepository.findFirstByFeedOrderByCreatedAtAsc(feed);
-        String firstLikedUserName = firstLikeOpt.map(fl -> fl.getUser().getUsername()).orElse("");
-        String firstLikedUserProfileImageUrl = firstLikeOpt
+        Optional<FeedLikes> first = feedLikeRepository.findFirstByFeedOrderByCreatedAtAsc(feed);
+        String firstUser = first.map(fl -> fl.getUser().getNickname()).orElse("");
+        String firstProfile = first
                 .map(fl -> profileUrlPrefix + fl.getUser().getProfileImage())
                 .orElse("");
 
-        List<String> imageUrls = feedImagesRepository.findByFeed(feed).stream()
+        List<String> images = feedImagesRepository.findByFeed(feed)
+                .stream()
                 .map(fi -> imageUrlPrefix + fi.getImageUrl())
                 .collect(Collectors.toList());
 
@@ -257,14 +260,18 @@ public class FeedServiceImpl implements FeedService {
                 .id(feed.getId())
                 .title(feed.getTitle())
                 .authorId(feed.getUser().getId())
-                .authorName(feed.getUser().getUsername())
+                .authorName(feed.getUser().getNickname())
                 .authorProfileImageUrl(profileUrlPrefix + feed.getUser().getProfileImage())
-                .imageUrls(imageUrls)
+                .imageUrls(images)
+                .image(feed.getImage())
+                .exerciseType(feed.getExerciseType())
+                .exerciseTime(feed.getExerciseTime())
+                .workoutDuration(feed.getWorkoutDuration())
                 .visibility(feed.getVisibility())
                 .likeCount(likeCount)
                 .isLikedByCurrentUser(isLiked)
-                .firstLikedUserName(firstLikedUserName)
-                .firstLikedUserProfileImageUrl(firstLikedUserProfileImageUrl)  // 여기에 추가
+                .firstLikedUserName(firstUser)
+                .firstLikedUserProfileImageUrl(firstProfile)
                 .commentCount(commentRepository.countByFeedId(feed.getId()))
                 .shareCount(3L)
                 .feedContent(feed.getContent())
@@ -314,7 +321,7 @@ public class FeedServiceImpl implements FeedService {
                 .stream()
                 .map(fl -> new FeedLikeResponse(
                         fl.getUser().getId(),
-                        fl.getUser().getUsername(),
+                        fl.getUser().getNickname(),
                         profileUrlPrefix + fl.getUser().getProfileImage(),
                         fl.getCreatedAt()
                 ))
@@ -331,7 +338,7 @@ public class FeedServiceImpl implements FeedService {
                 .map(c -> CommentResponse.builder()
                         .commentId(c.getId())
                         .userId(c.getUser().getId())
-                        .userName(c.getUser().getUsername())
+                        .userName(c.getUser().getNickname())
                         .profileImageUrl(profileUrlPrefix + c.getUser().getProfileImage())
                         .text(c.getText())
                         .createdAt(c.getCreatedAt())
@@ -356,7 +363,7 @@ public class FeedServiceImpl implements FeedService {
         return CommentResponse.builder()
                 .commentId(saved.getId())
                 .userId(user.getId())
-                .userName(user.getUsername())
+                .userName(user.getNickname())
                 .profileImageUrl(profileUrlPrefix + user.getProfileImage())
                 .text(saved.getText())
                 .createdAt(saved.getCreatedAt())
@@ -373,7 +380,7 @@ public class FeedServiceImpl implements FeedService {
         return CommentResponse.builder()
                 .commentId(updated.getId())
                 .userId(updated.getUser().getId())
-                .userName(updated.getUser().getUsername())
+                .userName(updated.getUser().getNickname())
                 .profileImageUrl(profileUrlPrefix + updated.getUser().getProfileImage())
                 .text(updated.getText())
                 .createdAt(updated.getCreatedAt())
