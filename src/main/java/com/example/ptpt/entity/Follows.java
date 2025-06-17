@@ -23,11 +23,11 @@ public class Follows {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "follower_id", nullable = false)
-    private Users follower;
+    private UserEntity follower;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "following_id", nullable = false)
-    private Users following;
+    private UserEntity following;
 
     @Column(name = "created_at", updatable = false, columnDefinition = "TIMESTAMP")
     private Instant createdAt;

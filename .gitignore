@@ -30,4 +30,8 @@ out/
 .vscode/
 
 ### Mac OS ###
-.DS_Store 
+.DS_Store
+
+# 디비 관련 폴더 제외(docker-compose 파일 제외)
+!docker/dbms/docker-compose.yml
+docker

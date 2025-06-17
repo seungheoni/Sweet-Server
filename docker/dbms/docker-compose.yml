@@ -11,7 +11,7 @@ services:
       MYSQL_USER: ptpt
       MYSQL_PASSWORD: qwer1234
     ports:
-      - "3306:3306"
+      - "33306:3306"
     volumes:
       - ./data:/var/lib/mysql
 

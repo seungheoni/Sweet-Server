@@ -22,7 +22,7 @@ public class FeedLikes {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private Users user;
+    private UserEntity user;
 
     // Instant 타입으로 변경
     @Column(name = "created_at", updatable = false, columnDefinition = "TIMESTAMP")

@@ -23,7 +23,7 @@ CREATE TABLE feeds (
     visibility ENUM('비공개','일촌','공개') NOT NULL,         -- 공개 범위: "비공개", "일촌", "공개"
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,            -- 피드 작성 시간
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,  -- 피드 수정 시간
-    FOREIGN KEY (user_id) REFERENCES USERS(id)                -- 외래 키: USERS 테이블의 id 참조
+    FOREIGN KEY (user_id) REFERENCES users(id)                -- 외래 키: USERS 테이블의 id 참조
 );
 
 -- FEED_IMAGES 테이블: 피드에 첨부된 이미지
@@ -31,7 +31,7 @@ CREATE TABLE feed_images (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,                       -- 기본 키, 자동 증가
     feed_id BIGINT NOT NULL,                                     -- 피드 참조 (FEEDS.id 참조)
     image_url VARCHAR(500) NOT NULL,                          -- 이미지 URL (최대 500자)
-    FOREIGN KEY (feed_id) REFERENCES FEEDS(id)                -- 외래 키: FEEDS 테이블의 id 참조
+    FOREIGN KEY (feed_id) REFERENCES feeds(id)                -- 외래 키: FEEDS 테이블의 id 참조
 );
 
 -- EXERCISE_DETAILS 테이블: 운동 상세 정보 (FEEDS와 1:1 관계)
@@ -39,7 +39,7 @@ CREATE TABLE exercise_details (
     feed_id BIGINT PRIMARY KEY,                                  -- 기본 키이자 FEEDS와 1:1 매핑 (FEEDS.id 참조)
     duration VARCHAR(50),                                     -- 총 운동 시간 (예: "30분")
     location VARCHAR(255),                                    -- location (최대 255자)
-    FOREIGN KEY (feed_id) REFERENCES FEEDS(id)                -- 외래 키: FEEDS 테이블의 id 참조
+    FOREIGN KEY (feed_id) REFERENCES feeds(id)                -- 외래 키: FEEDS 테이블의 id 참조
 );
 
 -- FEED_EXERCISE_TYPES 테이블: 피드별 다중 운동 타입 (1:N 관계)
@@ -47,7 +47,7 @@ CREATE TABLE feed_exercise_types (
     feed_id BIGINT NOT NULL,                                     -- 피드 참조 (FEEDS.id)
     exercise_type VARCHAR(50) NOT NULL,                       -- 운동 타입 (예: running, swimming, cycling 등)
     PRIMARY KEY (feed_id, exercise_type),                     -- 복합 기본 키
-    FOREIGN KEY (feed_id) REFERENCES FEEDS(id)                -- 외래 키: FEEDS 테이블의 id 참조
+    FOREIGN KEY (feed_id) REFERENCES feeds(id)                -- 외래 키: FEEDS 테이블의 id 참조
 );
 
 -- FEED_TAGS 테이블: 피드 관련 태그 (피드당 최대 30개, 각 태그 최대 30자)
@@ -55,7 +55,7 @@ CREATE TABLE feed_tags (
     feed_id BIGINT NOT NULL,                                     -- 피드 참조 (FEEDS.id)
     tag VARCHAR(30) NOT NULL,                                 -- 태그 (최대 30자)
     PRIMARY KEY (feed_id, tag),                               -- 복합 기본 키 (중복 방지)
-    FOREIGN KEY (feed_id) REFERENCES FEEDS(id)                -- 외래 키: FEEDS 테이블의 id 참조
+    FOREIGN KEY (feed_id) REFERENCES feeds(id)                -- 외래 키: FEEDS 테이블의 id 참조
 );
 
 -- FOLLOWS 테이블: 팔로우/팔로잉 관계 (유저당 최대 7500명 제한은 애플리케이션 로직에서 처리)
@@ -64,8 +64,8 @@ CREATE TABLE follows (
     follower_id BIGINT NOT NULL,                                 -- 팔로우 요청자 (USERS.id 참조)
     following_id BIGINT NOT NULL,                                -- 팔로잉 대상 (USERS.id 참조)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,            -- 팔로우 생성 시간
-    FOREIGN KEY (follower_id) REFERENCES USERS(id),           -- 외래 키: USERS 테이블의 id 참조
-    FOREIGN KEY (following_id) REFERENCES USERS(id)           -- 외래 키: USERS 테이블의 id 참조
+    FOREIGN KEY (follower_id) REFERENCES users(id),           -- 외래 키: USERS 테이블의 id 참조
+    FOREIGN KEY (following_id) REFERENCES users(id)           -- 외래 키: USERS 테이블의 id 참조
 );
 
 -- ANNOUNCEMENTS 테이블: 공지사항
@@ -84,7 +84,7 @@ CREATE TABLE social_groups (
     description TEXT,                                         -- 그룹 설명 (최대 2200자)
     created_by BIGINT NOT NULL,                                  -- 그룹 생성자 (USERS.id 참조)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,            -- 그룹 생성 시간
-    FOREIGN KEY (created_by) REFERENCES USERS(id)            -- 외래 키: USERS 테이블의 id 참조
+    FOREIGN KEY (created_by) REFERENCES users(id)            -- 외래 키: USERS 테이블의 id 참조
 );
 
 -- SOCIAL_GROUPS_MEMBERS 테이블: 모임 참여자 정보
@@ -93,8 +93,8 @@ CREATE TABLE social_groups_members (
    user_id BIGINT NOT NULL,                                     -- 사용자 참조 (USERS.id)
    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,           -- 그룹 가입 시간
    PRIMARY KEY (group_id, user_id),                          -- 복합 기본 키
-   FOREIGN KEY (group_id) REFERENCES SOCIAL_GROUPS(id),      -- 외래 키: SOCIAL_GROUPS 테이블의 id 참조
-   FOREIGN KEY (user_id) REFERENCES USERS(id)                -- 외래 키: USERS 테이블의 id 참조
+   FOREIGN KEY (group_id) REFERENCES social_groups(id),      -- 외래 키: SOCIAL_GROUPS 테이블의 id 참조
+   FOREIGN KEY (user_id) REFERENCES users(id)                -- 외래 키: USERS 테이블의 id 참조
 );
 
 -- FEED_LIKES 테이블: 피드 좋아요 내역
@@ -103,8 +103,8 @@ CREATE TABLE feed_likes (
     feed_id BIGINT NOT NULL,                                     -- 피드 참조 (FEEDS.id)
     user_id BIGINT NOT NULL,                                     -- 좋아요를 누른 사용자 (USERS.id)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,            -- 좋아요 생성 시간
-    FOREIGN KEY (feed_id) REFERENCES FEEDS(id),               -- 외래 키: FEEDS 테이블의 id 참조
-    FOREIGN KEY (user_id) REFERENCES USERS(id)                -- 외래 키: USERS 테이블의 id 참조
+    FOREIGN KEY (feed_id) REFERENCES feeds(id),               -- 외래 키: FEEDS 테이블의 id 참조
+    FOREIGN KEY (user_id) REFERENCES users(id)                -- 외래 키: USERS 테이블의 id 참조
 );
 
 -- 관리자 기본 계정 데이터: 기본 관리자 계정 생성

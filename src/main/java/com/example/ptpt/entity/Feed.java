@@ -25,7 +25,7 @@ public class Feed {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private Users user;
+    private UserEntity user;
 
     @Column(length = 100)
     private String title;

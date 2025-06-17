@@ -27,7 +27,7 @@ public class SocialGroupsMembers {
     @MapsId("userId")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private Users user;
+    private UserEntity user;
 
     @Column(name = "joined_at", updatable = false)
     private LocalDateTime joinedAt;
