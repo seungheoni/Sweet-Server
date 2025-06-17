@@ -1,61 +1,129 @@
 package com.example.ptpt.util;
 
-import com.example.ptpt.enums.JwtRule;
-import com.example.ptpt.enums.TokenStatus;
-import io.jsonwebtoken.Jwts;
+import com.example.ptpt.exception.token.*;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-import jakarta.servlet.http.Cookie;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
+import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.security.Key;
-import java.util.Arrays;
-import java.util.Base64;
+import java.util.Date;
+import java.util.Map;
+import java.util.function.Function;
 
 @Slf4j
 @Component
-@Transactional(readOnly = true)
-@RequiredArgsConstructor
 public class JwtUtil {
 
-    public TokenStatus getTokenStatus(String token, Key secretKey) {
+    private static final String TOKEN_TYPE_KEY = "tokenType";
+    private static final String TOKEN_TYPE_ACCESS = "ACCESS";
+
+    private final SecretKey secretKey;
+    private final JwtParser jwtParser;
+
+
+    public JwtUtil(@Value("${jwt.secret}") String secret) {
+        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.jwtParser = Jwts.parser()
+                .setSigningKey(secretKey)
+                .build();
+    }
+
+    // ===== Token Validation Methods =====
+
+    /**
+     * 토큰 유효성 검증
+     */
+    public boolean validateToken(String token) {
         try {
-            Jwts.parser()
-                    .setSigningKey(secretKey)
-                    .build()
-                    .parseClaimsJws(token);
-            return TokenStatus.AUTHENTICATED;
-        } catch (Exception e) {
-            throw new RuntimeException(String.valueOf(TokenStatus.INVALID));
+            jwtParser.parseClaimsJws(token);
+            return true;
+        } catch (ExpiredJwtException e) {
+            log.warn("만료된 JWT 토큰");
+            throw new ExpiredTokenException();
+        } catch (UnsupportedJwtException e) {
+            log.warn("지원하지 않는 JWT 토큰");
+            throw new UnsupportedTokenException();
+        } catch (MalformedJwtException e) {
+            log.warn("잘못된 형식의 JWT 토큰");
+            throw new MalformedTokenException();
+        } catch (SignatureException e) {
+            log.warn("잘못된 서명의 JWT 토큰");
+            throw new InvalidSignatureTokenException();
+        } catch (JwtException e) {
+            log.warn("잘못된 JWT 토큰");
+            throw new InvalidTokenException();
         }
     }
 
-    public String resolveTokenFromCookie(Cookie[] cookies, JwtRule tokenPrefix) {
-        return Arrays.stream(cookies)
-                .filter(cookie -> {
-                   return cookie.getName().equals(tokenPrefix.getValue());
-                })
-                .findFirst()
-                .map(Cookie::getValue)
-                .orElse("");
+    /**
+     * Access Token인지 확인
+     */
+    public boolean isAccessToken(String token) {
+        try {
+            Claims claims = extractAllClaims(token);
+            return TOKEN_TYPE_ACCESS.equals(claims.get(TOKEN_TYPE_KEY));
+        } catch (Exception e) {
+            return false;
+        }
     }
 
-    public Key getSigningKey(String secretKey) {
-        String encodeKey = encodeToBase64(secretKey);
-        return Keys.hmacShaKeyFor(encodeKey.getBytes(StandardCharsets.UTF_8));
+    // ===== Token Information Extraction Methods =====
+
+    /**
+     * 토큰에서 이메일(subject) 추출
+     */
+    public String extractEmail(String token) {
+        return extractClaim(token, Claims::getSubject);
     }
 
-    private String encodeToBase64(String secretKey) {
-        return Base64.getEncoder().encodeToString(secretKey.getBytes());
+    /**
+     * 토큰에서 만료 시간 추출
+     */
+    public Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
     }
 
-    public Cookie resetToken(JwtRule tokenPrefix) {
-        Cookie cookie = new Cookie(tokenPrefix.getValue(), null);
-        cookie.setMaxAge(0);
-        cookie.setPath("/");
-        return cookie;
+    /**
+     * 토큰에서 특정 claim 추출
+     */
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
+    }
+
+    /**
+     * 토큰 만료 여부 확인
+     */
+    public boolean isTokenExpired(String token) {
+        try {
+            Date expiration = extractExpiration(token);
+            return expiration.before(new Date());
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    /**
+     * 토큰에서 모든 Claims 추출
+     */
+    private Claims extractAllClaims(String token) {
+        try {
+            return jwtParser
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (ExpiredJwtException e) {
+            throw new ExpiredTokenException();
+        } catch (UnsupportedJwtException e) {
+            throw new UnsupportedTokenException();
+        } catch (MalformedJwtException e) {
+            throw new MalformedTokenException();
+        } catch (SignatureException e) {
+            throw new InvalidSignatureTokenException();
+        } catch (JwtException e) {
+            throw new InvalidTokenException();
+        }
     }
 }

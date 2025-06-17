@@ -1,6 +1,6 @@
 package com.example.ptpt.dto.response;
 
-import com.example.ptpt.entity.Users;
+import com.example.ptpt.entity.UserEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -50,7 +50,7 @@ public class UserResponse {
     private Boolean isEmailVerified;
 
     // Entity → DTO 변환용 생성자
-    public UserResponse(Users u) {
+    public UserResponse(UserEntity u) {
         this.id                     = u.getId();
         this.email                  = u.getEmail();
         this.nickname               = u.getNickname();

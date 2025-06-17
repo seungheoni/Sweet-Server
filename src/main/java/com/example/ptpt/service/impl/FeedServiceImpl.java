@@ -94,7 +94,7 @@ public class FeedServiceImpl implements FeedService {
         feed.setExerciseTime(feedRequest.getExerciseTime());
         feed.setWorkoutDuration(feedRequest.getWorkoutDuration());
 
-        Users user = usersRepository.findById(feedRequest.getAuthorId())
+        UserEntity user = usersRepository.findById(feedRequest.getAuthorId())
                 .orElseThrow(() -> new RuntimeException("User not found. "));
         feed.setUser(user);
 
@@ -284,7 +284,7 @@ public class FeedServiceImpl implements FeedService {
     public void likeFeed(Long feedId, Long userId) {
         Feed feed = feedRepository.findById(feedId)
                 .orElseThrow(() -> new EntityNotFoundException("Feed not found: " + feedId));
-        Users user = usersRepository.findById(userId)
+        UserEntity user = usersRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 
         if (feedLikeRepository.existsByFeedAndUser(feed, user)) {
@@ -302,7 +302,7 @@ public class FeedServiceImpl implements FeedService {
     public void unlikeFeed(Long feedId, Long userId) {
         Feed feed = feedRepository.findById(feedId)
                 .orElseThrow(() -> new EntityNotFoundException("Feed not found: " + feedId));
-        Users user = usersRepository.findById(userId)
+        UserEntity user = usersRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 
         if (!feedLikeRepository.existsByFeedAndUser(feed, user)) {
@@ -350,7 +350,7 @@ public class FeedServiceImpl implements FeedService {
     public CommentResponse createComment(Long feedId, Long userId, CommentRequest request) {
         Feed feed = feedRepository.findById(feedId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Feed not found: " + feedId));
-        Users user = usersRepository.findById(userId)
+        UserEntity user = usersRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userId));
 
         Comment comment = Comment.builder()

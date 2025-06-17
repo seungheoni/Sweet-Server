@@ -2,14 +2,14 @@ package com.example.ptpt.repository;
 
 import com.example.ptpt.entity.Feed;
 import com.example.ptpt.entity.FeedLikes;
-import com.example.ptpt.entity.Users;
+import com.example.ptpt.entity.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface FeedLikeRepository extends JpaRepository<FeedLikes, Long> {
-    boolean existsByFeedAndUser(Feed feed, Users user);
+    boolean existsByFeedAndUser(Feed feed, UserEntity user);
     void deleteByFeedIdAndUserId(Long feedId, Long userId);
 
 

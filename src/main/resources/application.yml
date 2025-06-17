@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:mysql://localhost:33306/ptpt
-    username: ptpt
-    password: qwer1234
+    url: jdbc:mysql://211.254.215.146:65000/ptpt
+    username: ptpt_user
+    password: ptpt@user138
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -33,21 +33,18 @@ server:
 
 # Swagger UI 설정
 springdoc:
-  server-url: https://ptpt.ngrok.app
+#  server-url: https://ptpt.ngrok.app
   swagger-ui:
     path: /swagger-ui.html
   api-docs:
-    path: /api-docs
-
-# 인증서버 url
-base-url:
-  auth-server: http://localhost:8081/api/v1
+    path: /v3/api-docs
 
 # jwt key(test 용, env 로 이동)
 jwt:
-  signing-key: F8Myz55d0Wy74RHjKrq0NY0lFfVb5K1L
-  access-token-expiration: 600000  # 10 min: 10min * 60 sec * 1000 millisecond
-  refresh-token-expiration: 10800000  # 10800000 3 hours: 3hours * 60min * 60sec * 1000 millisecond
+  secret: 7KAwWI4D6wbwSZ4IdUsrikAbrrwBJaIsZInN7YfE1WXaS4bep7p6eZGPi4MBNFYd
+
+  # 10 min: 10min * 60 sec * 1000 millisecond
+  # 10800000 3 hours: 3hours * 60min * 60sec * 1000 millisecond
 
 ptpt:
   upload:
