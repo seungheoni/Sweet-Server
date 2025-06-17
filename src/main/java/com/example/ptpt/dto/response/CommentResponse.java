@@ -23,6 +23,9 @@ public class CommentResponse {
     @Schema(description = "작성자명", example = "chimchakman_")
     private String userName;
 
+    @Schema(description = "프로필 사진 URL", example = "https://cdn.example.com/profiles/2.png")
+    private String profileImageUrl;    // 새로 추가된 필드
+
     @Schema(description = "댓글 내용", example = "소통해요~")
     private String text;
 

@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.List;
-
 @Getter
 @Builder
 @NoArgsConstructor
@@ -29,41 +28,52 @@ public class FeedDetailResponse {
     @Schema(description = "작성자명", example = "홍길동")
     private String authorName;
 
-    @Schema(description = "피드 전체 본문",
-            example = "오늘 30분 운동했습니다. 기분이 너무 좋네요!")
-    private String feedContent;
-
-    @Schema(description = "작성자 프로필 이미지 URL",
-            example = "/feeds/images/kim_nugu.jpg")
+    @Schema(description = "작성자 프로필 이미지 URL", example = "/profiles/images/user123.png")
     private String authorProfileImageUrl;
 
-    @Schema(description = "이미지 URL 목록",
-            example = "[\"/feeds/images/img1.jpg\", \"/feeds/images/img2.jpg\"]")
+    @Schema(description = "첨부된 이미지 URL 목록", example = "[\"/feeds/images/img1.jpg\"]")
     private List<String> imageUrls;
 
-    @Schema(description = "피드 공개 범위", example = "PUBLIC")
+    @Schema(description = "운동 이미지 URL", example = "/feeds/images/workout1.jpg")
+    private String image;
+
+    @Schema(description = "운동 종류", example = "러닝")
+    private String exerciseType;
+
+    @Schema(description = "운동 시간대", example = "아침")
+    private String exerciseTime;
+
+    @Schema(description = "운동 시간(분)", example = "30")
+    private Integer workoutDuration;
+
+    @Schema(description = "피드 본문 내용", example = "오늘 30분 운동했습니다.")
+    private String feedContent;
+
+    @Schema(description = "공개 범위", example = "공개")
     private FeedVisibility visibility;
 
-    @Schema(description = "좋아요 수", example = "128", defaultValue = "0")
+    @Schema(description = "좋아요 수", example = "128")
     private Long likeCount;
 
-    @Schema(description = "현재 사용자가 좋아요를 눌렀는지 여부",
-            example = "true", defaultValue = "false")
+    @Schema(description = "현재 사용자의 좋아요 여부", example = "true")
     private Boolean isLikedByCurrentUser;
 
     @Schema(description = "첫번째 좋아요 누른 유저명", example = "김철수")
     private String firstLikedUserName;
 
-    @Schema(description = "댓글 수", example = "8", defaultValue = "0")
+    @Schema(description = "첫번째 좋아요 누른 유저 프로필 이미지 URL", example = "/profiles/images/user123.png")
+    private String firstLikedUserProfileImageUrl;
+
+    @Schema(description = "댓글 수", example = "8")
     private Long commentCount;
 
-    @Schema(description = "최상위 댓글 목록 (기본 3개)")
+    @Schema(description = "상위 댓글 목록")
     private List<CommentResponse> topComments;
 
-    @Schema(description = "게시글 공유 수", example = "3", defaultValue = "0")
+    @Schema(description = "공유 수", example = "3")
     private Long shareCount;
 
-    @Schema(description = "작성 시간(UTC)", example = "2025-04-21T23:32:00Z")
+    @Schema(description = "생성 시간(UTC)", example = "2025-04-21T23:32:00Z")
     private Instant createdAt;
 
     @Schema(description = "수정 시간(UTC)", example = "2025-04-21T23:35:00Z")

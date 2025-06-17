@@ -2,7 +2,7 @@ package com.example.ptpt.service.impl;
 
 import com.example.ptpt.dto.response.UserResponse;
 import com.example.ptpt.entity.Follows;
-import com.example.ptpt.entity.Users;
+import com.example.ptpt.entity.UserEntity;
 import com.example.ptpt.repository.FollowsRepository;
 import com.example.ptpt.repository.UsersRepository;
 import com.example.ptpt.service.FollowService;
@@ -31,9 +31,9 @@ public class FollowServiceImpl implements FollowService {
         if (followRepo.existsByFollowerIdAndFollowingId(followerId, targetUserId)) {
             return;
         }
-        Users follower = userRepo.findById(followerId)
+        UserEntity follower = userRepo.findById(followerId)
                 .orElseThrow(() -> new NoSuchElementException("팔로워를 찾을 수 없습니다."));
-        Users target   = userRepo.findById(targetUserId)
+        UserEntity target   = userRepo.findById(targetUserId)
                 .orElseThrow(() -> new NoSuchElementException("팔로우 대상을 찾을 수 없습니다."));
         Follows follow = new Follows();
         follow.setFollower(follower);
@@ -50,7 +50,7 @@ public class FollowServiceImpl implements FollowService {
     public Page<UserResponse> getFollowers(Long userId, Pageable pageable) {
         return followRepo.findByFollowingId(userId, pageable)
                 .map(f -> {
-                    Users u = f.getFollower();
+                    UserEntity u = f.getFollower();
                     // prefix가 슬래시로 끝나지 않으면 붙여 주고, 실제 파일명 앞에 붙이기
                     String prefix = profileUrlPrefix.endsWith("/")
                             ? profileUrlPrefix
@@ -59,7 +59,7 @@ public class FollowServiceImpl implements FollowService {
 
                     return UserResponse.builder()
                             .id(u.getId())
-                            .username(u.getUsername())
+                            .nickname(u.getNickname())         // ← getUsername() → getNickname()
                             .profileImageUrl(fullUrl)
                             .build();
                 });
@@ -70,7 +70,8 @@ public class FollowServiceImpl implements FollowService {
     public Page<UserResponse> getFollowing(Long userId, Pageable pageable) {
         return followRepo.findByFollowerId(userId, pageable)
                 .map(f -> {
-                    Users u = f.getFollowing();
+                    UserEntity u = f.getFollowing();
+                    // prefix가 슬래시로 끝나지 않으면 붙여 주고, 실제 파일명 앞에 붙이기
                     String prefix = profileUrlPrefix.endsWith("/")
                             ? profileUrlPrefix
                             : profileUrlPrefix + "/";
@@ -78,7 +79,7 @@ public class FollowServiceImpl implements FollowService {
 
                     return UserResponse.builder()
                             .id(u.getId())
-                            .username(u.getUsername())
+                            .nickname(u.getNickname())      // ← getUsername() → getNickname()
                             .profileImageUrl(fullUrl)
                             .build();
                 });
