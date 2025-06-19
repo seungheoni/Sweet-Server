@@ -6,7 +6,6 @@ import com.example.ptpt.dto.response.*;
 import com.example.ptpt.enums.FeedType;
 import com.example.ptpt.service.FeedService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,7 +14,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -51,16 +49,17 @@ public class FeedController {
     public ResponseEntity<Page<FeedResponse>> getFeeds(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) FeedType type) {
+            @RequestParam(required = false) FeedType type,
+            @RequestParam Long userId) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<FeedResponse> feeds = feedService.getFeeds(pageable,type);
+        Page<FeedResponse> feeds = feedService.getFeeds(pageable,type,userId);
         return ResponseEntity.ok(feeds);
     }
 
     @Operation(summary = "피드 상세 조회")
     @GetMapping("/{feedId}")
-    public ResponseEntity<FeedDetailResponse> getFeedsDetail(@PathVariable Long feedId) {
-        FeedDetailResponse feedDetailResponse = feedService.getFeedById(feedId);
+    public ResponseEntity<FeedDetailResponse> getFeedsDetail(@PathVariable Long feedId,@RequestParam Long userId) {
+        FeedDetailResponse feedDetailResponse = feedService.getFeedById(feedId,userId);
         if (feedDetailResponse == null) {
             return ResponseEntity.notFound().build();
         }
@@ -69,8 +68,8 @@ public class FeedController {
 
     @Operation(summary = "피드 작성")
     @PostMapping
-    public ResponseEntity<FeedResponse> createPost(@RequestBody FeedRequest feedRequest) {
-        FeedResponse createdFeed = feedService.createFeed(feedRequest);
+    public ResponseEntity<FeedResponse> createPost(@RequestParam Long userId,@RequestBody FeedRequest feedRequest) {
+        FeedResponse createdFeed = feedService.createFeed(feedRequest,userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdFeed);
     }
 
@@ -78,8 +77,9 @@ public class FeedController {
     @PutMapping("/{feedId}")
     public ResponseEntity<FeedResponse> updatePost(
             @PathVariable Long feedId,
+            @RequestParam Long userId,
             @RequestBody FeedRequest feedRequest) {
-        FeedResponse updatedFeed = feedService.updateFeed(feedId, feedRequest);
+        FeedResponse updatedFeed = feedService.updateFeed(feedId, feedRequest,userId);
         if (updatedFeed == null) {
             return ResponseEntity.notFound().build();
         }
@@ -88,8 +88,8 @@ public class FeedController {
 
     @Operation(summary = "피드 삭제")
     @DeleteMapping("/{feedId}")
-    public ResponseEntity<?> deletePost(@PathVariable Long feedId) {
-        feedService.deleteFeed(feedId);
+    public ResponseEntity<?> deletePost(@PathVariable Long feedId, @RequestParam Long userId) {
+        feedService.deleteFeed(feedId,userId);
         return ResponseEntity.ok("{\"message\": \"feed deleted successfully\"}");
     }
 
