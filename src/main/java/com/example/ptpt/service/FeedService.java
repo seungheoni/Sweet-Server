@@ -14,11 +14,11 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 public interface FeedService {
-    Page<FeedResponse> getFeeds(Pageable pageable,FeedType type);
-    FeedDetailResponse getFeedById(Long id);
-    FeedResponse createFeed(FeedRequest feedRequest);
-    FeedResponse updateFeed(Long id, FeedRequest feedRequest);
-    void deleteFeed(Long id);
+    Page<FeedResponse> getFeeds(Pageable pageable, FeedType type, Long currentUserId);
+    FeedDetailResponse getFeedById(Long id,Long currentUserId);
+    FeedResponse createFeed(FeedRequest feedRequest, Long currentUserId);
+    FeedResponse updateFeed(Long id, FeedRequest feedRequest, Long currentUserId);
+    void deleteFeed(Long id,Long currentUserId);
     List<String> uploadImages(Long feedId, List<MultipartFile> files);
 
     /** 특정 사용자가 피드에 좋아요를 누릅니다. */
