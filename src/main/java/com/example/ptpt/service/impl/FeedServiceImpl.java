@@ -27,9 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -55,37 +53,44 @@ public class FeedServiceImpl implements FeedService {
     private String profileUrlPrefix;
 
     @Override
-    public Page<FeedResponse> getFeeds(Pageable pageable, FeedType type) {
-        Long currentUserId = 1L;
+    public Page<FeedResponse> getFeeds(Pageable pageable, FeedType type, Long currentUserId) {
         List<Long> followingIds = followRepository.findFollowingIdsByFollowerId(currentUserId);
 
         Page<Feed> feedPage;
         if (type == FeedType.FOLLOWING) {
-            List<Long> ids = followingIds.isEmpty() ? Collections.singletonList(-1L) : followingIds;
-            feedPage = feedRepository.findByUserIdIn(ids, pageable);
-        } else {
-            List<Long> excludeIds = new ArrayList<>(followingIds);
-            excludeIds.add(currentUserId);
-            feedPage = feedRepository.findByUserIdNotIn(excludeIds, pageable);
+            feedPage = feedRepository.findByUserIdIn(followingIds, pageable);
+        } else {  // UNFOLLOWED
+            List<Long> exclude = new ArrayList<>(followingIds);
+            exclude.add(currentUserId);
+            feedPage = feedRepository.findByUserIdNotIn(exclude, pageable);
         }
 
-        return feedPage.map(this::convertToDto);
+        return feedPage.map(feed -> convertToDto(feed,currentUserId));
     }
 
     @Override
-    public FeedDetailResponse getFeedById(Long id) {
+    public FeedDetailResponse getFeedById(Long id,Long currentUserId) {
         Feed feed = feedRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Feed not found with id: " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Feed not found: " + id));
 
         List<FeedImages> feedImages = feedImagesRepository.findByFeed(feed);
         List<String> imageUrls = feedImages.stream()
                 .map(fi -> imageUrlPrefix + fi.getImageUrl())
                 .collect(Collectors.toList());
-        return convertToDetailDto(feed, imageUrls);
+
+        boolean isLiked = usersRepository.findById(currentUserId)
+                .map(user -> feedLikeRepository.existsByFeedAndUser(feed, user))
+                .orElse(false);
+
+        return convertToDetailDto(feed, imageUrls, isLiked);
     }
 
     @Override
-    public FeedResponse createFeed(FeedRequest feedRequest) {
+    public FeedResponse createFeed(FeedRequest feedRequest, Long currentUserId) {
+        UserEntity user = usersRepository.findById(currentUserId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                "User not found: " + currentUserId));
         Feed feed = new Feed();
         feed.setTitle(feedRequest.getTitle());
         feed.setContent(feedRequest.getContent());
@@ -93,20 +98,28 @@ public class FeedServiceImpl implements FeedService {
         feed.setExerciseType(feedRequest.getExerciseType());
         feed.setExerciseTime(feedRequest.getExerciseTime());
         feed.setWorkoutDuration(feedRequest.getWorkoutDuration());
-
-        UserEntity user = usersRepository.findById(feedRequest.getAuthorId())
-                .orElseThrow(() -> new RuntimeException("User not found. "));
         feed.setUser(user);
+        feed.setVisibility(
+                Optional.ofNullable(feedRequest.getVisibility())
+                        .orElse(FeedVisibility.PUBLIC)
+        );
 
-        feed.setVisibility(Optional.ofNullable(feedRequest.getVisibility()).orElse(FeedVisibility.PUBLIC));
         Feed saved = feedRepository.save(feed);
-        return convertToDto(saved);
+
+        return convertToDto(saved, currentUserId);
     }
 
     @Override
-    public FeedResponse updateFeed(Long id, FeedRequest feedRequest) {
+    public FeedResponse updateFeed(Long id, FeedRequest feedRequest, Long currentUserId) {
         Feed feed = feedRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Feed not found"));
+                .orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Feed not found: " + id));
+
+        if (!feed.getUser().getId().equals(currentUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "You are not allowed to update this feed");
+        }
+
         feed.setTitle(feedRequest.getTitle());
         feed.setContent(feedRequest.getContent());
         feed.setImage(feedRequest.getImage());
@@ -115,16 +128,17 @@ public class FeedServiceImpl implements FeedService {
         feed.setWorkoutDuration(feedRequest.getWorkoutDuration());
         feed.setVisibility(feedRequest.getVisibility());
 
-        Feed updated = feedRepository.save(feed);
-        return convertToDto(updated);
+        Feed saved = feedRepository.save(feed);
+        return convertToDto(saved, currentUserId);
     }
 
     @Override
-    public void deleteFeed(Long id) {
-        Feed feed = feedRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Feed not found"));
-
-        feedImagesRepository.findByFeed(feed).forEach(this::deletePhysicalFile);
+    public void deleteFeed(Long feedId, Long currentUserId) {
+        Feed feed = feedRepository.findById(feedId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Feed not found: "+feedId));
+        if (!feed.getUser().getId().equals(currentUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "삭제 권한이 없습니다");
+        }
         feedRepository.delete(feed);
     }
 
@@ -186,12 +200,8 @@ public class FeedServiceImpl implements FeedService {
         return imageUrls;
     }
 
-    private FeedDetailResponse convertToDetailDto(Feed feed, List<String> imageUrls) {
+    private FeedDetailResponse convertToDetailDto(Feed feed, List<String> imageUrls,  boolean isLikedByCurrentUser) {
         long likeCount = feedLikeRepository.countByFeed(feed);
-        Long currentUserId = 1L;
-        boolean isLiked = usersRepository.findById(currentUserId)
-                .map(user -> feedLikeRepository.existsByFeedAndUser(feed, user))
-                .orElse(false);
 
         Optional<FeedLikes> first = feedLikeRepository.findFirstByFeedOrderByCreatedAtAsc(feed);
         String firstUser = first.map(fl -> fl.getUser().getNickname()).orElse("");
@@ -219,14 +229,13 @@ public class FeedServiceImpl implements FeedService {
                 .authorName(feed.getUser().getNickname())
                 .authorProfileImageUrl(profileUrlPrefix + feed.getUser().getProfileImage())
                 .imageUrls(imageUrls)
-                .image(feed.getImage())
                 .exerciseType(feed.getExerciseType())
                 .exerciseTime(feed.getExerciseTime())
                 .workoutDuration(feed.getWorkoutDuration())
                 .feedContent(feed.getContent())
                 .visibility(feed.getVisibility())
                 .likeCount(likeCount)
-                .isLikedByCurrentUser(isLiked)
+                .isLikedByCurrentUser(isLikedByCurrentUser)  // 여기 반영
                 .firstLikedUserName(firstUser)
                 .firstLikedUserProfileImageUrl(firstProfile)
                 .commentCount(commentRepository.countByFeedId(feed.getId()))
@@ -238,9 +247,9 @@ public class FeedServiceImpl implements FeedService {
     }
 
 
-    private FeedResponse convertToDto(Feed feed) {
+    private FeedResponse convertToDto(Feed feed, Long currentUserId) {
         long likeCount = feedLikeRepository.countByFeed(feed);
-        Long currentUserId = 1L;
+
         boolean isLiked = usersRepository.findById(currentUserId)
                 .map(user -> feedLikeRepository.existsByFeedAndUser(feed, user))
                 .orElse(false);
@@ -263,18 +272,17 @@ public class FeedServiceImpl implements FeedService {
                 .authorName(feed.getUser().getNickname())
                 .authorProfileImageUrl(profileUrlPrefix + feed.getUser().getProfileImage())
                 .imageUrls(images)
-                .image(feed.getImage())
+                .feedContent(feed.getContent())
+                .visibility(feed.getVisibility())
                 .exerciseType(feed.getExerciseType())
                 .exerciseTime(feed.getExerciseTime())
                 .workoutDuration(feed.getWorkoutDuration())
-                .visibility(feed.getVisibility())
                 .likeCount(likeCount)
                 .isLikedByCurrentUser(isLiked)
                 .firstLikedUserName(firstUser)
                 .firstLikedUserProfileImageUrl(firstProfile)
                 .commentCount(commentRepository.countByFeedId(feed.getId()))
                 .shareCount(3L)
-                .feedContent(feed.getContent())
                 .createdAt(feed.getCreatedAt())
                 .updatedAt(feed.getUpdatedAt())
                 .build();
